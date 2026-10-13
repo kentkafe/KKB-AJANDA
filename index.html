@@ -59,30 +59,33 @@
   .sw.open .fg { transform:translateX(-200px); }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:20; }
   .modal.hidden { display:none; }
-  .box { background:var(--w); padding:16px; border-radius:12px; width:min(92vw,420px); }
+  .box { background:var(--w); padding:16px; border-radius:12px; width:min(92vw,420px); max-height:90vh; overflow-y:auto; }
+  .hidden { display:none !important; }
   #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--g); color:var(--w); padding:10px 14px; border-radius:10px; display:none; z-index:30; font-size:14px; max-width:92vw; }
   details summary { cursor:pointer; color:var(--g); font-weight:bold; margin:8px 0; }
 </style>
 </head>
 <body>
 <header>
-  <h1>KKB AJANDA</h1>
-  <div class="sub" id="today"></div>
+  <h1 style="text-align:center">KKB AJANDA</h1>
+  <div class="sub" id="today" style="text-align:center"></div>
   <div class="search">
     <input id="q" type="search" placeholder="Ara: personel, bakım, not, toptancı...">
     <button class="search-btn" id="aramaBtn" title="Ara">🔍</button>
   </div>
 </header>
+<div id="aramaSonuc" class="hidden" style="padding:10px 12px"></div>
 
 <nav>
   <button data-tab="bugun" class="on">Bugün</button>
   <button data-tab="program">Haftalık Program</button>
-  <button data-tab="giris">Giriş / Çıkış</button>
   <button data-tab="istasyon">İstasyon & Mola</button>
+  <button data-tab="skt">Teşhir SKT</button>
   <button data-tab="toptan">Toptancılar</button>
   <button data-tab="bakim">Bakım</button>
   <button data-tab="notlar">Notlar</button>
   <button data-tab="mesaj">WhatsApp</button>
+  <button data-tab="giris">Vardiya Takip</button>
 </nav>
 
 <main>
@@ -92,12 +95,15 @@
       <div class="gunbaslik" id="gunAdi"></div>
       <div class="muted" id="tarihStr"></div>
       <div class="muted" id="hava" style="margin-top:6px">Hava durumu yükleniyor...</div>
-      <div id="sonucSatir" style="margin-top:8px"></div>
     </div>
-    <div class="card"><h2>Giriş / Çıkış Durumu</h2><div id="girisOzet"></div></div>
-    <div class="card"><h2>Anımsatıcı <span class="muted" style="font-weight:normal">· Yaklaşanlar (24 saat)</span></h2><div id="yaklasanList"></div></div>
     <div class="card"><h2>Bugün Çalışan</h2><div id="calisanList"></div></div>
     <div class="card"><h2>Bugün İzinli</h2><div id="izinList"></div></div>
+    <div class="card"><h2>Şu An Molada</h2><div id="moladaBugun"></div></div>
+    <div class="card"><h2>Vardiya Takip Durumu</h2><div id="girisOzet"></div></div>
+    <div class="card"><h2>Anımsatıcı <span class="muted" style="font-weight:normal">· Yaklaşanlar (24 saat)</span></h2><div id="yaklasanList"></div></div>
+    <div class="card"><h2>Raf Ömrü · Teşhir Dolabı</h2>
+      <div id="sktBugun"></div>
+    </div>
     <div class="card"><h2>Yaklaşan Bakımlar</h2><div id="bakimOzet"></div></div>
   </section>
 
@@ -138,10 +144,12 @@
   <!-- GİRİŞ / ÇIKIŞ -->
   <section id="tab-giris" class="hidden">
     <div class="card">
-      <h2>Giriş / Çıkış Kayıtları</h2>
+      <h2>Vardiya Takip Kayıtları</h2>
       <p class="muted" id="girisSon"></p>
       <p class="muted">VARDİYA TAKİP SİSTEMİ tablosunu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
       <textarea class="field" id="girisYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <p class="muted" id="girisOto"></p>
+      <button id="girisCek">Şimdi çek</button>
       <button id="girisYukle">Yükle</button>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1pznFrTVyscC2Z8SGccNeVKzzlD40HYSLXTsXd9lDuOI/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
@@ -163,8 +171,28 @@
       <h2>Tabloyu Güncelle</h2>
       <p class="muted">İSTASYON VE MOLALAR tablosunu kopyalayıp yapıştır, "Yükle"ye bas.</p>
       <textarea class="field" id="istYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <p class="muted" id="istOto"></p>
+      <button id="istCek">Şimdi çek</button>
       <button id="istYukle">Yükle</button>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/10011sRFN2be-ANCK6ep9Tr4mdurfgC49pSmNfaJzv8c/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
+    </div>
+  </section>
+
+  <!-- TEŞHİR SKT -->
+  <section id="tab-skt" class="hidden">
+    <div class="card">
+      <h2>Teşhir Dolabı · SKT Takip</h2>
+      <p class="muted" id="sktOto"></p>
+      <button id="sktCek">Şimdi çek</button>
+      <p class="muted">Tablo uygulama açılınca ve 15 dakikada bir kendiliğinden çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
+      <textarea class="field" id="sktYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <button id="sktYukle">Yükle</button>
+      <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1J6coyDr6WscOrZLP7XsGL8MhKXVwy7CsZJlukfYz6n0/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
+    </div>
+    <div class="card">
+      <h2>Kayıtlar</h2>
+      <p class="muted">Son 7 gün ve ileri tarihli kayıtlar, SKT'ye göre sıralı.</p>
+      <div class="scroll"><table id="sktTable"></table></div>
     </div>
   </section>
 
@@ -182,7 +210,7 @@
       <div id="toptanList"></div>
     </div>
     <div class="card">
-      <h2>Son Siparişler</h2>
+      <h2>Bugünkü Siparişler</h2>
       <div id="siparisList"></div>
     </div>
   </section>
@@ -273,8 +301,7 @@ const SABLONLAR = [
   "İşe geç kalmayalım arkadaşlar.",
   "Vardiya giriş çıkışlarınızı unutmayın arkadaşlar.",
   "Formları doldurmayı unutmayın arkadaşlar.",
-  "Mesai saatlerinde telefonla oynamayalım.",
-  "Sevkiyat geldi mi arkadaşlar? Şoförle haberleşin."
+  "Mesai saatlerinde telefonla oynamayalım."
 ];
 
 // ---- Örnek veri: 12.10.2026 - 18.10.2026 ----
@@ -312,6 +339,7 @@ db.bakim = db.bakim || [];
 db.giris = db.giris || {rows:[], son:0};
 db.toptanci = db.toptanci || [];
 db.siparis = db.siparis || [];
+db.skt = db.skt || {rows:[], son:0};
 function kaydet(){ try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e){} }
 
 // ---- Yardımcılar ----
@@ -438,7 +466,7 @@ function girisRender(){
   document.getElementById("girisSon").textContent = "Son kayıt: " + (db.giris.son ? fmtDT(db.giris.son) : "yok") + " · Kayıt sayısı: " + (db.giris.rows||[]).length;
   const s = girisDurum();
   const el = document.getElementById("girisOzet");
-  if (!s){ el.innerHTML = '<div class="muted">Giriş/çıkış tablosu yüklenmedi. "Giriş / Çıkış" sekmesinden yapıştır.</div>'; return; }
+  if (!s){ el.innerHTML = '<div class="muted">Giriş/çıkış tablosu yüklenmedi. "Vardiya Takip" sekmesinden yapıştır.</div>'; return; }
   const blok = (baslik, liste, metin)=> `<div class="grp">${baslik} (${liste.length})</div>` +
     (liste.length ? liste.map(metin).join("") : '<div class="muted">Yok.</div>');
   el.innerHTML =
@@ -457,7 +485,7 @@ function satirlariAyir(line, d){
   }
   out.push(cur); return out.map(s=>s.trim());
 }
-function girisYukle(text){
+function girisYukle(text, sessiz){
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   const d = lines.some(l=>l.includes("\t")) ? "\t" : ",";
   const rows = []; let son = db.giris.son||0;
@@ -470,9 +498,9 @@ function girisYukle(text){
     rows.push({t, ad:c[i+1]||"", vardiya:c[i+2]||"", islem:up(c[i+3]), neden:c[i+4]||"", taksi:c[i+5]||""});
     if (t > son) son = t;
   });
-  if (!rows.length){ toast("Kayıt okunamadı. Sütunları kontrol et."); return false; }
+  if (!rows.length){ if (!sessiz) toast("Kayıt okunamadı. Sütunları kontrol et."); return false; }
   db.giris = {rows, son};
-  kaydet(); renderAll(); toast(rows.length+" kayıt yüklendi"); return true;
+  kaydet(); renderAll(); if (!sessiz) toast(rows.length+" kayıt yüklendi"); return true;
 }
 document.getElementById("girisYukle").onclick = ()=>{
   const t = document.getElementById("girisYapistir").value;
@@ -493,7 +521,8 @@ function bildir(baslik, metin){
   if ("Notification" in window && Notification.permission==="granted"){ try { new Notification(baslik, {body: metin}); } catch(e){} }
 }
 let modalSave = null;
-function openModal(title, body, onSave){
+function openModal(title, body, onSave, okLabel){
+  document.getElementById("mOk").textContent = okLabel || "Kaydet";
   document.getElementById("mTitle").textContent = title;
   document.getElementById("mBody").innerHTML = body;
   modalSave = onSave;
@@ -614,11 +643,12 @@ document.addEventListener("pointerup", ()=>{
 // ---- Bugün ----
 function bugunRender(){
   document.getElementById("gunAdi").textContent = GUN_AD[bugunIdx];
-  document.getElementById("tarihStr").textContent = aktifHaftaKey() || bugunStr();
-  document.getElementById("today").textContent = bugunStr() + " · " + GUN_AD[bugunIdx];
+  document.getElementById("tarihStr").textContent = bugunStr();
+  document.getElementById("today").textContent = haftaAraligiYazi();
   const {izin, cal} = bugunListeleri();
   yaklasanRender();
   girisRender();
+  sktRender();
   let c = "";
   TUR_SIRA.forEach(t=>{
     const grup = cal.filter(x=>x.tur===t);
@@ -774,9 +804,11 @@ function istasyonRender(){
     return {ad: eslesPersonel(r.ad), istasyon: r.istasyon, molalar, aktif: molalar.find(m=>m.aktif)};
   });
   const molada = satirlar.filter(s=>s.aktif);
-  document.getElementById("moladaList").innerHTML = molada.length
+  const moladaHtml = molada.length
     ? `<div class="molada">${molada.map(s=>`<div><b>${esc(s.ad)}</b> molada · dönüş ${esc(s.aktif.e)} · ${Math.max(0,s.aktif.em-nm)} dk kaldı</div>`).join("")}</div>`
     : '<div class="muted">Şu an molada kimse yok.</div>';
+  document.getElementById("moladaList").innerHTML = moladaHtml;
+  document.getElementById("moladaBugun").innerHTML = moladaHtml;
   let t = "<tr><th>Personel</th><th>İstasyon</th><th>Durum</th><th>1. Mola başlangıç</th><th>1. Mola bitiş</th><th>2. Mola başlangıç</th><th>2. Mola bitiş</th><th>3. Mola başlangıç</th><th>3. Mola bitiş</th></tr>";
   satirlar.forEach(s=>{
     const durum = s.aktif ? `<span class="tag yel">Molada</span>` : `<span class="tag grn">İstasyonda</span>`;
@@ -789,7 +821,7 @@ function istasyonRender(){
   });
   document.getElementById("istTable").innerHTML = satirlar.length ? t : "<tr><td>Veri yok.</td></tr>";
 }
-function istasyonYukle(text){
+function istasyonYukle(text, sessiz){
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   const d = lines.some(l=>l.includes("\t")) ? "\t" : ",";
   const tarih = (lines.slice(0,3).join(" ").match(/\d{2}\.\d{2}\.\d{4}/)||[null])[0];
@@ -801,9 +833,9 @@ function istasyonYukle(text){
     const molalar = [[c[2],c[3]],[c[4],c[5]],[c[6],c[7]]].filter(([b,e])=>toMin(b)!=null && toMin(e)!=null);
     rows.push({ad, istasyon:c[1], molalar});
   });
-  if (!rows.length){ toast("Tablo okunamadı. Sütunları kontrol et."); return false; }
+  if (!rows.length){ if (!sessiz) toast("Tablo okunamadı. Sütunları kontrol et."); return false; }
   db.istasyon = {tarih: tarih || bugunStr(), rows};
-  kaydet(); renderAll(); toast("İstasyon tablosu güncellendi"); return true;
+  kaydet(); renderAll(); if (!sessiz) toast("İstasyon tablosu güncellendi"); return true;
 }
 document.getElementById("istYukle").onclick = ()=>{
   const t = document.getElementById("istYapistir").value;
@@ -831,10 +863,10 @@ function toptanRender(){
         </div>
       </div>`).join("")
     : '<div class="muted">Henüz toptancı eklenmedi.</div>';
-  const son = db.siparis.slice().reverse().slice(0,10);
+  const son = db.siparis.filter(s=>s.tarih===bugunStr()).slice().reverse();
   document.getElementById("siparisList").innerHTML = son.length
     ? son.map(s=>{ const t = db.toptanci.find(x=>x.id===s.tId); return `<div class="row"><div><b>${esc(t?t.ad:"Silinmiş toptancı")}</b><div class="muted">${esc(s.metin.slice(0,80))}</div></div><span class="muted">${esc(s.tarih)}</span></div>`; }).join("")
-    : '<div class="muted">Sipariş yok.</div>';
+    : '<div class="muted">Bugün sipariş yok.</div>';
 }
 document.getElementById("tEkle").onclick = ()=>{
   const ad = document.getElementById("tAd").value.trim();
@@ -847,12 +879,20 @@ document.addEventListener("click", e=>{
   const b = e.target.closest("[data-top]"); if (!b) return;
   const t = db.toptanci.find(x=>String(x.id)===String(b.dataset.id)); if (!t) return;
   if (b.dataset.top==="siparis"){
-    openModal("Sipariş: "+t.ad, `<textarea class="field" data-f="metin" rows="5" placeholder="Ürün - adet, satır satır&#10;Örn: Süt - 20 koli"></textarea>`,
+    const tel = (t.tel||"").replace(/\D/g,"");
+    openModal("Sipariş: "+t.ad, `
+      <textarea class="field" data-f="metin" rows="6" placeholder="Ürün - adet, satır satır&#10;Örn: Süt - 20 koli"></textarea>
+      <div class="toolbar"><button class="ghost" id="sipKopya" type="button">Metni kopyala</button></div>
+      <p class="muted" style="margin:6px 0 0">${tel ? "Gönder'e basınca WhatsApp "+esc(t.ad)+" numarasıyla açılır." : "Telefon kayıtlı değil. WhatsApp'ta kişiyi kendin seçeceksin."}</p>`,
       v=>{
         if (!v.metin) return toast("Sipariş boş");
         db.siparis.push({id:uid(), tId:t.id, metin:v.metin, tarih:bugunStr()});
-        kaydet(); renderAll(); toast("Sipariş kaydedildi");
-      });
+        kaydet(); renderAll();
+        window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(v.metin), "_blank");
+      }, "WhatsApp'ta gönder");
+    document.getElementById("sipKopya").onclick = ()=>{
+      copyText(document.querySelector('#mBody [data-f="metin"]').value);
+    };
   } else if (b.dataset.top==="sil"){
     db.toptanci = db.toptanci.filter(x=>x.id!==t.id); kaydet(); renderAll(); toast("Toptancı silindi");
   }
@@ -948,28 +988,143 @@ document.getElementById("sablonlar").innerHTML = SABLONLAR.map(s=>
 waGuncelle();
 
 // ---- Sekmeler ----
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+function showTab(name){
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on", x.dataset.tab===name));
   document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
-  document.getElementById("tab-"+b.dataset.tab).classList.remove("hidden");
+  document.getElementById("tab-"+name).classList.remove("hidden");
   renderAll();
-});
+}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
 // ---- Arama ----
 function aramaYap(){
-  const t = lc(document.getElementById("q").value).trim();
-  const satir = document.getElementById("sonucSatir");
-  if (!t){ satir.textContent = ""; return; }
+  const ham = document.getElementById("q").value.trim();
+  const t = lc(ham);
+  const box = document.getElementById("aramaSonuc");
+  if (!t){ box.classList.add("hidden"); box.innerHTML = ""; return; }
   const sonuc = [];
-  const h = db.haftalar[db.secili];
-  if (h) h.personel.forEach(ad=>{ if (lc(ad).includes(t)) sonuc.push(ad+" (personel)"); });
-  db.toptanci.forEach(x=>{ if (lc(x.ad).includes(t)) sonuc.push(x.ad+" (toptancı)"); });
-  db.bakim.forEach(b=>{ if (lc(b.ad).includes(t)) sonuc.push(b.ad+" (bakım)"); });
-  db.notlar.forEach(n=>{ if (lc(n.metin).includes(t)) sonuc.push(n.metin+" (not)"); });
-  satir.textContent = sonuc.length ? "Arama: "+sonuc.slice(0,6).join(" • ") : "Sonuç bulunamadı.";
+  const key = aktifHaftaKey();
+  if (key) db.haftalar[key].personel.forEach(ad=>{ if (lc(ad).includes(t)) sonuc.push({label:ad, tip:"Personel", tab:"program"}); });
+  db.toptanci.forEach(x=>{ if (lc(x.ad).includes(t)) sonuc.push({label:x.ad, tip:"Toptancı", tab:"toptan"}); });
+  db.bakim.forEach(b=>{ if (lc(b.ad).includes(t)) sonuc.push({label:b.ad, tip:"Bakım", tab:"bakim"}); });
+  db.notlar.forEach(n=>{ if (lc(n.metin).includes(t)) sonuc.push({label:n.metin, tip:"Not", tab:"notlar"}); });
+  (db.istasyon && db.istasyon.rows || []).forEach(r=>{ if (lc(r.ad).includes(t)) sonuc.push({label:r.ad, tip:"İstasyon", tab:"istasyon"}); });
+  box.classList.remove("hidden");
+  box.innerHTML = '<div class="card" style="margin:0"><h2 style="margin:0 0 6px">Arama: '+esc(ham)+'</h2>' +
+    (sonuc.length
+      ? sonuc.slice(0,15).map(x=>`<div class="row" data-go="${x.tab}" style="cursor:pointer"><span>${esc(x.label)}</span><span class="tag">${x.tip}</span></div>`).join("")
+      : '<div class="muted">Sonuç bulunamadı.</div>') + '</div>';
 }
+document.addEventListener("click", e=>{
+  const g = e.target.closest("[data-go]"); if (!g) return;
+  document.getElementById("q").value = ""; aramaYap(); showTab(g.dataset.go);
+});
 document.getElementById("q").addEventListener("input", aramaYap);
 document.getElementById("aramaBtn").onclick = aramaYap;
+
+// ---- Google Sheets otomatik çekme (15 dk) ----
+const SHEET_IST = "10011sRFN2be-ANCK6ep9Tr4mdurfgC49pSmNfaJzv8c";
+const SHEET_GIRIS = "1pznFrTVyscC2Z8SGccNeVKzzlD40HYSLXTsXd9lDuOI";
+const otoDurum = {ist:null, gir:null, skt:null, zaman:null};
+async function sheetCek(id){
+  const r = await fetch("https://docs.google.com/spreadsheets/d/"+id+"/gviz/tq?tqx=out:csv&t="+Date.now(), {cache:"no-store"});
+  if (!r.ok) throw new Error("HTTP "+r.status);
+  return await r.text();
+}
+function otoYaz(){
+  const z = otoDurum.zaman;
+  const saat = z ? hm(z.getHours()*60+z.getMinutes()) : "";
+  const metin = ok => ok===null ? "Otomatik çekme bekleniyor." : ok ? "Otomatik çekme başarılı · son: "+saat : "Otomatik çekilemedi. Tabloyu kopyalayıp yapıştırarak güncelle.";
+  document.getElementById("istOto").textContent = metin(otoDurum.ist);
+  document.getElementById("girisOto").textContent = metin(otoDurum.gir);
+  document.getElementById("sktOto").textContent = metin(otoDurum.skt);
+}
+async function otomatikCek(sessiz){
+  let ist = false, gir = false, skt = false;
+  try { ist = istasyonYukle(await sheetCek(SHEET_IST), true); } catch(e){ ist = false; }
+  try { gir = girisYukle(await sheetCek(SHEET_GIRIS), true); } catch(e){ gir = false; }
+  try { skt = sktYukle(await sheetCek(SHEET_SKT), true); } catch(e){ skt = false; }
+  otoDurum.ist = ist; otoDurum.gir = gir; otoDurum.skt = skt; otoDurum.zaman = new Date();
+  otoYaz();
+  if (!sessiz) toast((ist ? "İstasyon ✓" : "İstasyon ✗") + " · " + (gir ? "Vardiya ✓" : "Vardiya ✗") + " · " + (skt ? "Teşhir ✓" : "Teşhir ✗"));
+}
+document.getElementById("istCek").onclick = ()=>otomatikCek(false);
+document.getElementById("girisCek").onclick = ()=>otomatikCek(false);
+function copyText(metin){
+  const ta = document.createElement("textarea");
+  ta.value = metin; ta.setAttribute("readonly",""); ta.style.position = "fixed"; ta.style.top = "-1000px";
+  document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch(e){}
+  ta.remove();
+  toast(ok ? "Metin kopyalandı" : "Kopyalanamadı, metni elle seçip kopyala");
+}
+
+// ---- Teşhir dolabı raf ömrü ----
+const SHEET_SKT = "1J6coyDr6WscOrZLP7XsGL8MhKXVwy7CsZJlukfYz6n0";
+const SKT_ATLA = /^(zaman.*|tarih.*|başlang.*|baslang.*|bitiş.*|bitis.*|raf.*|skt|imha.*|son.*|toplam.*|beyan.*|personel.*|ad|ad soyad|isim|not|kaydeden|sorumlu.*|onay.*|taksi.*|vardiya.*|teşhir.*|teshir.*)$/i;
+function sktTarihAl(s){ const m = String(s||"").match(/(\d{2})\.(\d{2})\.(\d{4})/); return m ? m[3]+"-"+m[2]+"-"+m[1] : ""; }
+function sktYukle(text, sessiz){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if (lines.length < 2){ if (!sessiz) toast("Teşhir tablosu okunamadı"); return false; }
+  const d = lines[0].includes("\t") ? "\t" : ",";
+  const head = satirlariAyir(lines[0], d).map(h=>h.trim());
+  const adIdx = head.findIndex(h=>/personel|isim|ad soyad|^ad$/i.test(h));
+  const sktIdx = head.findIndex(h=>/raf|skt|imha/i.test(h));
+  const urunCol = head.map((h,i)=>i).filter(i=>head[i] && !SKT_ATLA.test(head[i]) && !/^\d/.test(head[i]));
+  const rows = [];
+  lines.slice(1).forEach(l=>{
+    const c = satirlariAyir(l, d);
+    const kaydeden = c[adIdx>=0 ? adIdx : 1] || "";
+    let skt = sktIdx>=0 ? sktTarihAl(c[sktIdx]) : "";
+    if (!skt){ const tum = c.map(sktTarihAl).filter(Boolean); skt = tum[tum.length-1] || ""; }
+    if (!skt) return;
+    urunCol.forEach(i=>{
+      const sayi = parseFloat(String(c[i]||"").replace(",", "."));
+      if (sayi > 0) rows.push({urun: head[i], adet: String(c[i]).trim(), kaydeden, skt});
+    });
+  });
+  if (!rows.length){ if (!sessiz) toast("Teşhir tablosunda ürün bulunamadı"); return false; }
+  db.skt = {rows, son: Date.now()};
+  kaydet(); renderAll(); if (!sessiz) toast(rows.length+" teşhir kaydı yüklendi"); return true;
+}
+function sktRender(){
+  const bugunIso = iso(new Date());
+  const ucGunOnce = iso(new Date(Date.now()-3*86400000));
+  const rows = (db.skt && db.skt.rows) || [];
+  const tb = document.getElementById("sktTable");
+  if (tb){
+    const yediGun = iso(new Date(Date.now()-7*86400000));
+    const liste = rows.filter(r=>r.skt >= yediGun).sort((a,b)=>a.skt<b.skt?-1:a.skt>b.skt?1:0);
+    tb.innerHTML = liste.length
+      ? "<tr><th>Ürün</th><th>Adet</th><th>Kaydeden</th><th>SKT</th><th>Durum</th></tr>" + liste.map(r=>{
+          const fark = Math.round((new Date(r.skt+"T00:00") - new Date(bugunIso+"T00:00"))/86400000);
+          const [etiket, sinif] = fark < 0 ? ["Süresi geçti","red"] : fark === 0 ? ["Bugün doluyor","red"] : ["Kalan "+fark+" gün", fark<=3 ? "yel" : "grn"];
+          return `<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.adet)}</td><td>${esc(r.kaydeden)}</td><td>${fmtTarih(r.skt)}</td><td><span class="tag ${sinif}">${etiket}</span></td></tr>`;
+        }).join("")
+      : "<tr><td>Kayıt yok.</td></tr>";
+  }
+  const el = document.getElementById("sktBugun"); if (!el) return;
+  const dolan = rows.filter(r=>r.skt===bugunIso);
+  const gecen = rows.filter(r=>r.skt < bugunIso && r.skt >= ucGunOnce).sort((a,b)=>a.skt<b.skt?1:-1);
+  const satir = (r, etiket, sinif)=>`<div class="row"><div><b>${esc(r.urun)}</b><div class="muted">Adet: ${esc(r.adet)} · ${esc(r.kaydeden)}</div></div><span class="tag ${sinif}">${etiket} ${fmtTarih(r.skt)}</span></div>`;
+  let h = dolan.length
+    ? dolan.map(r=>satir(r, "SKT", "red")).join("")
+    : '<div class="muted">Bugün raf ömrü dolan ürün yok.</div>';
+  if (gecen.length) h += '<div class="grp">Son 3 günde süresi geçen</div>' + gecen.map(r=>satir(r, "SKT", "yel")).join("");
+  el.innerHTML = h;
+}
+function haftaAraligiYazi(){
+  const k = aktifHaftaKey(); if (k) return k;
+  const pzt = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate()-bugunIdx);
+  const paz = new Date(pzt.getFullYear(), pzt.getMonth(), pzt.getDate()+6);
+  return fmtTarih(iso(pzt))+" - "+fmtTarih(iso(paz));
+}
+document.getElementById("sktCek").onclick = ()=>otomatikCek(false);
+document.getElementById("sktYukle").onclick = ()=>{
+  const t = document.getElementById("sktYapistir").value;
+  if (!t.trim()) return toast("Önce tabloyu yapıştır");
+  if (sktYukle(t, false)) document.getElementById("sktYapistir").value = "";
+};
 
 // ---- Başlat ----
 function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); }
@@ -979,6 +1134,9 @@ alarmKontrol();
 setInterval(alarmKontrol, 30000);
 setInterval(()=>{ bugunRender(); istasyonRender(); }, 60000);
 setInterval(havaCek, 1800000);
+otoYaz();
+otomatikCek(true);
+setInterval(()=>otomatikCek(true), 900000);
 </script>
 </body>
 </html>

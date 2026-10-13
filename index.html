@@ -97,10 +97,25 @@
   button.ghost.on { background:var(--gold); color:var(--g); border-color:var(--gold); }
   table th, table td { white-space:nowrap; }
   th[data-sort] { cursor:pointer; }
+  button, .btn { background:var(--g2); color:var(--w); font-weight:500; box-shadow:none; }
+  button:active, .btn:active { transform:scale(.96); }
+  button.ghost, .btn.ghost { background:var(--w); color:var(--g); border:1px solid var(--g); }
+  button.ghost.on { background:var(--g2); color:var(--w); border-color:var(--g2); }
+  button.search-btn { background:var(--w); color:var(--g); }
+  header .menuBtn { position:absolute; right:12px; top:12px; background:transparent; border:1px solid var(--gold2); color:var(--gold2); font-size:18px; padding:4px 10px; box-shadow:none; }
+  .menuPanel { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:25; display:flex; justify-content:flex-end; }
+  .menuPanel.hidden { display:none; }
+  .menuKutu { width:min(88vw,340px); background:var(--w); height:100%; overflow-y:auto; padding:16px; }
+  .menuSatir { border-bottom:1px solid #e6eee9; padding:10px 0; }
+  .menuSatir .btn, .menuSatir button { margin-right:6px; margin-top:6px; }
+  td.wrap { white-space:normal; min-width:200px; text-align:left; }
+  .filtreler { flex-wrap:wrap; }
+  .filtreler select { font-size:13px; padding:6px; border-radius:8px; border:1px solid #bcd3c4; max-width:100%; }
 </style>
 </head>
 <body>
 <header>
+  <button class="menuBtn" id="menuAc" aria-label="Menü">☰</button>
   <h1 style="text-align:center">KKB AJANDA</h1>
   <div class="sub" id="today" style="text-align:center"></div>
   <div class="search">
@@ -117,6 +132,7 @@
   <button data-tab="giris">Vardiya Takip</button>
   <button data-tab="skt">Teşhir SKT</button>
   <button data-tab="jimbo">Jimbo 1 & 2</button>
+  <button data-tab="depo">Depo</button>
   <button data-tab="toptan">Toptancılar</button>
   <button data-tab="bakim">Bakım</button>
   <button data-tab="notlar">Notlar</button>
@@ -140,6 +156,9 @@
       <div class="muted" id="jimboTarih"></div>
       <div id="jimboBugun" style="margin-top:8px"></div>
     </div>
+    <div class="card"><h2>Depo Takip</h2>
+      <div id="depoBugun"></div>
+    </div>
     <div class="card"><h2>Raf Ömrü · Teşhir Dolabı</h2>
       <div class="toolbar"><label class="muted">Gün:</label><input type="date" id="sktGun"></div>
       <div id="sktPasta"></div>
@@ -147,6 +166,14 @@
       <div id="sktBugun"></div>
     </div>
     <div class="card"><h2>Yaklaşan Bakımlar</h2><div id="bakimOzet"></div></div>
+    <div class="card"><h2>Veri Yedeği</h2>
+      <p class="muted">Safari'de geçmişi temizlersen uygulama verileri silinebilir. Ara sıra "Yedeği WhatsApp'a gönder" de: telefonun paylaş menüsü açılır, WhatsApp'ı seçip kendine ya da grubuna yollarsın. Gerekirse dosyayı "Yedek yükle" ile geri getirirsin.</p>
+      <p id="yedekHatirlat" style="margin:0 0 8px"></p>
+      <div class="toolbar">
+        <button id="yedekIndir">Yedeği WhatsApp'a gönder</button>
+        <label class="btn ghost" style="cursor:pointer">Yedek yükle<input type="file" id="yedekYukle" accept="application/json" style="display:none"></label>
+      </div>
+    </div>
   </section>
 
   <!-- PROGRAM -->
@@ -178,7 +205,7 @@
     </div>
     <div class="card">
       <h2>Kişi Bazında Haftalık Özet</h2>
-      <div class="scroll"><table id="ozetTable"></table></div>
+      <div class="scroll"><table id="ozetTable" data-filtre></table></div>
       <p class="muted">Eksik çalışma: hedefin altında kalan. Mesai: hedefin üstünde kalan.</p>
     </div>
   </section>
@@ -209,12 +236,15 @@
     <div class="card">
       <h2>Personel Aylık Tablo</h2>
       <p class="muted">Başlığa dokunarak sıralayabilirsin. Geç kalma: 5 dk üstü. Eksik: haftalık hedefin o aydaki payının altında kalan saat.</p>
-      <div class="scroll"><table id="ayTablo"></table></div>
+      <div class="scroll"><table id="ayTablo" data-filtre></table></div>
     </div>
   </section>
 
   <!-- İSTASYON & MOLA -->
   <section id="tab-istasyon" class="hidden">
+    <div class="card">
+      <a class="btn" href="https://share.gemini.google/sw2fv9Crc2b7" target="_blank" style="text-decoration:none">Planlama yap</a>
+    </div>
     <div class="card">
       <h2>Şu An Molada</h2>
       <div class="muted" id="saat"></div>
@@ -223,7 +253,7 @@
     <div class="card">
       <h2>Bugünün İstasyon ve Molaları</h2>
       <div class="muted" id="veriTarihi" style="margin-bottom:8px"></div>
-      <div class="scroll"><table id="istTable"></table></div>
+      <div class="scroll"><table id="istTable" data-filtre></table></div>
     </div>
     <div class="card">
       <h2>Tabloyu Güncelle</h2>
@@ -250,7 +280,7 @@
     <div class="card">
       <h2>Kayıtlar</h2>
       <p class="muted">Son 7 gün ve ileri tarihli kayıtlar, SKT'ye göre sıralı.</p>
-      <div class="scroll"><table id="sktTable"></table></div>
+      <div class="scroll"><table id="sktTable" data-filtre></table></div>
     </div>
   </section>
 
@@ -269,7 +299,26 @@
       <h2>Aylık Kayıtlar</h2>
       <div class="toolbar"><label class="muted">Ay:</label><input type="month" id="jimboAy"></div>
       <p class="muted" id="jimboOzet"></p>
-      <div class="scroll"><table id="jimboTablo"></table></div>
+      <div class="scroll"><table id="jimboTablo" data-filtre></table></div>
+    </div>
+  </section>
+
+  <!-- DEPO -->
+  <section id="tab-depo" class="hidden">
+    <div class="card">
+      <h2>Depo Takip</h2>
+      <p class="muted" id="depoOto"></p>
+      <button id="depoCek">Şimdi çek</button>
+      <p class="muted">Tablo otomatik çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
+      <textarea class="field" id="depoYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <button id="depoYukle">Yükle</button>
+      <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1ar3MA08KZPr0I4pipQUMP63fKWq3CoDXTM0h5HLxCxo/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
+    </div>
+    <div class="card">
+      <h2>Aylık Depo Kayıtları</h2>
+      <div class="toolbar"><label class="muted">Ay:</label><input type="month" id="depoAy"></div>
+      <p class="muted" id="depoOzet"></p>
+      <div class="scroll"><table id="depoTable" data-filtre></table></div>
     </div>
   </section>
 
@@ -390,6 +439,12 @@
     </div>
   </div>
 </div>
+<div id="menu" class="menuPanel hidden">
+  <div class="menuKutu">
+    <div class="toolbar" style="justify-content:space-between"><b style="color:var(--g)">Bağlantılar</b><button class="ghost" id="menuKapat">Kapat</button></div>
+    <div id="menuListe"></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -407,7 +462,11 @@ const SABLONLAR = [
   "İşe geç kalmayalım arkadaşlar.",
   "Vardiya giriş çıkışlarınızı unutmayın arkadaşlar.",
   "Formları doldurmayı unutmayın arkadaşlar.",
-  "Mesai saatlerinde telefonla oynamayalım."
+  "Mesai saatlerinde telefonla oynamayalım.",
+  "Makineleri teslim alalım arkadaşlar.",
+  "Depolara bugün hiç ürün gelmedi mi?",
+  "Depodan bugün hiç ürün çıkarmadınız mı?",
+  "Teşhir dolabına pasta çıkarmadınız mı?"
 ];
 
 // ---- Örnek veri: 12.10.2026 - 18.10.2026 ----
@@ -448,6 +507,7 @@ db.siparis = db.siparis || [];
 db.skt = db.skt || {rows:[], son:0};
 db.cihaz = db.cihaz || [];
 db.jimbo = db.jimbo || {rows:[], son:0};
+db.depo = db.depo || {rows:[], son:0};
 function kaydet(){ try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e){} }
 
 // ---- Yardımcılar ----
@@ -1153,7 +1213,7 @@ document.getElementById("aramaBtn").onclick = aramaYap;
 // ---- Google Sheets otomatik çekme (15 dk) ----
 const SHEET_IST = "10011sRFN2be-ANCK6ep9Tr4mdurfgC49pSmNfaJzv8c";
 const SHEET_GIRIS = "1pznFrTVyscC2Z8SGccNeVKzzlD40HYSLXTsXd9lDuOI";
-const otoDurum = {ist:null, gir:null, skt:null, jimbo:null, zaman:null};
+const otoDurum = {ist:null, gir:null, skt:null, jimbo:null, depo:null, zaman:null};
 async function sheetCek(id, sayfa){
   const ek = sayfa ? "&sheet="+encodeURIComponent(sayfa) : "";
   const r = await fetch("https://docs.google.com/spreadsheets/d/"+id+"/gviz/tq?tqx=out:csv"+ek+"&t="+Date.now(), {cache:"no-store"});
@@ -1168,14 +1228,16 @@ function otoYaz(){
   document.getElementById("girisOto").textContent = metin(otoDurum.gir);
   document.getElementById("sktOto").textContent = metin(otoDurum.skt);
   document.getElementById("jimboOto").textContent = metin(otoDurum.jimbo);
+  document.getElementById("depoOto").textContent = metin(otoDurum.depo);
 }
 async function otomatikCek(sessiz){
-  let ist = false, gir = false, skt = false, jim = false;
+  let ist = false, gir = false, skt = false, jim = false, dep = false;
   try { ist = istasyonYukle(await istasyonMetniGetir(), true); } catch(e){ ist = false; }
   try { gir = girisYukle(await sheetCek(SHEET_GIRIS), true); } catch(e){ gir = false; }
   try { skt = sktYukle(await sheetCek(SHEET_SKT), true); } catch(e){ skt = false; }
   try { jim = jimboYukle(await sheetCek(SHEET_JIMBO), true); } catch(e){ jim = false; }
-  otoDurum.ist = ist; otoDurum.gir = gir; otoDurum.skt = skt; otoDurum.jimbo = jim; otoDurum.zaman = new Date();
+  try { dep = depoYukle(await sheetCek(SHEET_DEPO), true); } catch(e){ dep = false; }
+  otoDurum.ist = ist; otoDurum.gir = gir; otoDurum.skt = skt; otoDurum.jimbo = jim; otoDurum.depo = dep; otoDurum.zaman = new Date();
   otoYaz();
   if (!sessiz) toast((ist ? "İstasyon ✓" : "İstasyon ✗") + " · " + (gir ? "Vardiya ✓" : "Vardiya ✗") + " · " + (skt ? "Teşhir ✓" : "Teşhir ✗"));
 }
@@ -1213,6 +1275,11 @@ function sktMiktarAl(h, v){
   const birim = (m[2] || (/kutu/i.test(h) ? "kutu" : /adet/i.test(h) ? "adet" : "")).toLowerCase();
   return {sayi, birim};
 }
+const SKT_ETIKET = ["KUTU","KUTULU","KUTULAR","ADET","ADETLİ","ADETLI","ADETLER","ÜRÜN","ÜRÜNLER","URUN","URUNLER","KUTUSU","ADETİ"];
+function sktUrunAdi(h){
+  return String(h||"").replace(/\(.*?\)/g," ").split(/\s+/)
+    .filter(w=>w && !SKT_ETIKET.includes(up(w))).join(" ").trim();
+}
 function sktYukle(text, sessiz){
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   if (lines.length < 2){ if (!sessiz) toast("Teşhir tablosu okunamadı"); return false; }
@@ -1221,7 +1288,7 @@ function sktYukle(text, sessiz){
   const adIdx = head.findIndex(h=>/personel|isim|ad soyad|^ad$/i.test(h));
   const sktIdx = head.findIndex(h=>/raf|skt|imha|son\s*g[üu]n/i.test(h));
   const kayitIdx = head.findIndex(h=>/zaman|timestamp|kayıt|kayit/i.test(h));
-  const urunCols = head.map((h,i)=>i).filter(i=>head[i] && !SKT_ATLA.test(head[i]) && !SKT_KOLON.test(head[i]) && !/^\d/.test(head[i]));
+  const urunCols = head.map((h,i)=>i).filter(i=>head[i] && !SKT_ATLA.test(head[i]) && !SKT_KOLON.test(head[i]) && !/^\d/.test(head[i]) && sktUrunAdi(head[i]));
   const rows = [];
   lines.slice(1).forEach(l=>{
     const c = satirlariAyir(l, d);
@@ -1233,7 +1300,7 @@ function sktYukle(text, sessiz){
     const saat = (sktIdx>=0 ? sktSaatAl(c[sktIdx]) : "") || "01:00";
     urunCols.forEach(i=>{
       const m = sktMiktarAl(head[i], c[i]); if (!m) return;
-      rows.push({urun: head[i].replace(/\(.*?\)/g,"").trim() || head[i], adet: m.sayi+(m.birim ? " "+m.birim : ""), kaydeden, skt, saat, kayit});
+      rows.push({urun: sktUrunAdi(head[i]), adet: m.sayi+(m.birim ? " "+m.birim : ""), kaydeden, skt, saat, kayit});
     });
   });
   if (!rows.length){ if (!sessiz) toast("Teşhir tablosunda ürün bulunamadı"); return false; }
@@ -1539,8 +1606,198 @@ document.getElementById("jimboYukle").onclick = ()=>{
 };
 document.getElementById("jimboAy").addEventListener("change", jimboTabloRender);
 
+// ---- Veri yedeği ----
+document.getElementById("yedekIndir").onclick = async ()=>{
+  db.sonYedek = Date.now(); kaydet();
+  const veri = JSON.stringify({uygulama:"KKB AJANDA", tarih:new Date().toISOString(), veri:db});
+  const ad = "kkb-ajanda-yedek-" + bugunStr().replace(/\./g,"-") + ".json";
+  const dosya = new File([veri], ad, {type:"application/json"});
+  if (navigator.canShare && navigator.canShare({files:[dosya]})){
+    try { await navigator.share({files:[dosya], title:"KKB AJANDA yedek"}); return; }
+    catch(err){ if (err && err.name === "AbortError") return; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(dosya); a.download = ad;
+  document.body.appendChild(a); a.click(); a.remove();
+  toast("Yedek indirildi");
+};
+document.getElementById("yedekYukle").addEventListener("change", async e=>{
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    const yeni = j.veri || j;
+    if (!yeni || typeof yeni !== "object" || !yeni.haftalar) throw new Error("gecersiz");
+    db = Object.assign({haftalar:{}, hedef:45, bakim:[], notlar:[], istasyon:{tarih:"", rows:[]}, giris:{rows:[], son:0},
+      toptanci:[], siparis:[], skt:{rows:[], son:0}, cihaz:[], jimbo:{rows:[], son:0}, depo:{rows:[], son:0}}, yeni);
+    kaydet(); renderAll(); toast("Yedek geri yüklendi");
+  } catch(err) { toast("Yedek dosyası okunamadı"); }
+});
+
+// ---- Yedek hatırlatma ----
+function yedekHatirlatRender(){
+  const el = document.getElementById("yedekHatirlat"); if (!el) return;
+  if (!db.sonYedek){ el.innerHTML = '<span class="tag red">Henüz yedek alınmadı. Güncellemeden önce yedek al.</span>'; return; }
+  const gun = Math.floor((Date.now() - db.sonYedek) / 86400000);
+  el.innerHTML = gun >= 7
+    ? `<span class="tag red">Son yedek ${gun} gün önce. Yedek al.</span>`
+    : `<span class="tag grn">Son yedek: ${gun === 0 ? "bugün" : gun + " gün önce"}</span>`;
+}
+
+// ---- Bağlantılar (hamburger menü) ----
+const BAGLANTILAR = [
+  {ad:"Kent Kafe web sitesi", url:"https://kentkafe.com.tr"},
+  {ad:"Menü", url:"https://menucebimde.com/?menuid=C6CRQE"},
+  {ad:"Instagram", url:"https://instagram.com/kentkafe16?srtk=MTJpMTFhdDV6M2NxNw%3D%3D&utm_source=qr"},
+  {ad:"Alerjen ve kalori menü", url:"https://heyzine.com/flip-book/731f1e07ff.html?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAdGRleAU7Z69leHRuA2FlbQIxMQBwZG9mAmZkaWQWUQOb-784m_UkYTdT15vV0cwpFwM6oHNydGMGYXBwX2lkDzEyNDAyNDU3NDI4NzQxNAABp0VRi_hsfXP9ETHuAZGN8c-y9SIk0CfLJ90_ZYi8dy0Lz0otcGmHbNpSVM4a_aem_bSQKm0HVH1TtWrBlgcRXGA"},
+  {ad:"Planlama yap", url:"https://share.gemini.google/sw2fv9Crc2b7"}
+];
+document.getElementById("menuListe").innerHTML = BAGLANTILAR.map((b,i)=>
+  `<div class="menuSatir"><b>${esc(b.ad)}</b><div>
+     <button data-lnk="git" data-i="${i}">Siteye git</button>
+     <button class="ghost" data-lnk="paylas" data-i="${i}">Link paylaş</button>
+   </div></div>`).join("");
+document.getElementById("menuAc").onclick = ()=>document.getElementById("menu").classList.remove("hidden");
+document.getElementById("menuKapat").onclick = ()=>document.getElementById("menu").classList.add("hidden");
+document.getElementById("menu").addEventListener("click", async e=>{
+  if (e.target.id === "menu") return document.getElementById("menu").classList.add("hidden");
+  const b = e.target.closest("[data-lnk]"); if (!b) return;
+  const l = BAGLANTILAR[+b.dataset.i];
+  if (b.dataset.lnk === "git"){ window.open(l.url, "_blank"); return; }
+  if (navigator.share){ try { await navigator.share({title:l.ad, url:l.url}); return; } catch(err){ if (err.name === "AbortError") return; } }
+  copyText(l.url);
+});
+
+// ---- Tablo filtre ve Excel ----
+const tabloSecim = {};
+function tabloKur(){
+  document.querySelectorAll("table[data-filtre]").forEach(t=>{
+    const kap = t.closest(".scroll") || t;
+    if (!document.getElementById("flt-"+t.id)){
+      const fw = document.createElement("div"); fw.id = "flt-"+t.id; fw.className = "toolbar filtreler";
+      kap.parentNode.insertBefore(fw, kap);
+      const xb = document.createElement("div"); xb.className = "toolbar";
+      xb.innerHTML = `<button class="ghost" data-xls="${t.id}">Excel'e aktar</button>`;
+      kap.parentNode.insertBefore(xb, kap.nextSibling);
+    }
+    const wrap = document.getElementById("flt-"+t.id);
+    const satirlar = [...t.rows];
+    if (satirlar.length < 2){ wrap.innerHTML = ""; return; }
+    const basliklar = [...satirlar[0].cells].map(c=>c.textContent.trim());
+    const veriler = satirlar.slice(1);
+    const secim = tabloSecim[t.id] || (tabloSecim[t.id] = {});
+    let html = "";
+    basliklar.forEach((b,i)=>{
+      if (!b) return;
+      const deger = [...new Set(veriler.map(r=>r.cells[i] ? r.cells[i].textContent.trim() : "").filter(Boolean))].sort((x,y)=>x.localeCompare(y,"tr"));
+      if (deger.length < 2 || deger.length > 80) { delete secim[i]; return; }
+      if (secim[i] && !deger.includes(secim[i])) delete secim[i];
+      html += `<select data-flt="${t.id}" data-col="${i}"><option value="">${esc(b)}: hepsi</option>` +
+        deger.map(v=>`<option value="${esc(v)}" ${v===secim[i] ? "selected" : ""}>${esc(v)}</option>`).join("") + `</select>`;
+    });
+    wrap.innerHTML = html;
+    veriler.forEach(r=>{
+      const uyar = Object.entries(secim).every(([i,v])=> !v || (r.cells[i] && r.cells[i].textContent.trim()===v));
+      r.style.display = uyar ? "" : "none";
+    });
+  });
+}
+document.addEventListener("change", e=>{
+  const s = e.target;
+  if (!s.matches || !s.matches("select[data-flt]")) return;
+  const id = s.dataset.flt;
+  tabloSecim[id] = tabloSecim[id] || {};
+  tabloSecim[id][s.dataset.col] = s.value;
+  tabloKur();
+});
+function tabloXls(id){
+  const t = document.getElementById(id); if (!t) return;
+  const csv = [...t.rows].filter(r=>r.style.display !== "none")
+    .map(r=>[...r.cells].map(c=>'"'+c.textContent.trim().replace(/"/g,'""')+'"').join(";")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}));
+  a.download = id + "-" + bugunStr().replace(/\./g,"-") + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-xls]"); if (b) tabloXls(b.dataset.xls);
+});
+
+// ---- Depo takip (mal giriş / çıkış) ----
+const SHEET_DEPO = "1ar3MA08KZPr0I4pipQUMP63fKWq3CoDXTM0h5HLxCxo";
+const DEPO_UYARI_SAAT = 18;
+let depoBildirildi = "";
+function csvParse(t, d){
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i=0; i<t.length; i++){
+    const c = t[i];
+    if (q){ if (c === '"'){ if (t[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === d){ row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r"){ if (c === "\r" && t[i+1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+    else cur += c;
+  }
+  if (cur.length || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.some(x=>x.trim()));
+}
+function depoYukle(text, sessiz){
+  const tablo = csvParse(text, ",");
+  if (tablo.length < 2){ if (!sessiz) toast("Depo tablosu okunamadı"); return false; }
+  const H = tablo[0].map(h=>up(h));
+  const col = re => H.findIndex(h=>re.test(h));
+  const cZ = col(/ZAMAN/), cP = col(/PERSONEL/), cD = col(/DEPO/), cI = col(/İŞLEM|ISLEM/);
+  let cU = H.findIndex(h=>/MAL/.test(h) && /MİKTAR|MIKTAR|&/.test(h));
+  if (cU < 0) cU = H.length - 1;
+  const rows = [];
+  tablo.slice(1).forEach(c=>{
+    const m = String(c[cZ]||"").match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return;
+    const t = new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +(m[6]||0)).getTime();
+    const i = up(c[cI]||"");
+    const tur = /GİR|GIR/.test(i) ? "GİRİŞ" : /ÇIK|CIK/.test(i) ? "ÇIKIŞ" : "";
+    if (!tur) return;
+    const icerik = String(c[cU]||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean).join(" · ");
+    rows.push({t, tarih: iso(new Date(t)), saat: saatMs(t), personel: c[cP]||"", depo: c[cD]||"", tur, icerik});
+  });
+  if (!rows.length){ if (!sessiz) toast("Depo tablosunda kayıt bulunamadı"); return false; }
+  db.depo = {rows, son: Date.now()};
+  kaydet(); renderAll(); if (!sessiz) toast(rows.length+" depo kaydı yüklendi"); return true;
+}
+function depoRender(){
+  const el = document.getElementById("depoBugun"); if (!el) return;
+  const bug = iso(new Date());
+  const bugun = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih===bug).sort((a,b)=>b.t-a.t);
+  const giris = bugun.filter(r=>r.tur==="GİRİŞ"), cikis = bugun.filter(r=>r.tur==="ÇIKIŞ");
+  const satir = r=>`<div class="row"><div><b>${esc(r.depo)}</b><div class="muted">${esc(r.personel)} · ${r.saat}</div><div class="muted">${esc(r.icerik)}</div></div></div>`;
+  let h = '<div class="grp">Bugün depoya gelen mal</div>' + (giris.length ? giris.map(satir).join("") : '<div class="muted">Bugün depoya mal girişi yok.</div>');
+  h += '<div class="grp">Bugün depodan çıkan mal</div>' + (cikis.length ? cikis.map(satir).join("") : '<div class="muted">Bugün depodan mal çıkışı yok.</div>');
+  if (!cikis.length && new Date().getHours() >= DEPO_UYARI_SAAT){
+    h = `<div class="durum no"><span class="ikon">✗</span><div><b>Bugün depodan hiçbir şey çıkmadı</b><div class="muted">Saat ${DEPO_UYARI_SAAT}:00'ı geçti. Çıkış işlenmemiş olabilir.</div></div></div>` + h;
+    if (depoBildirildi !== bug){ depoBildirildi = bug; bildir("Depo", "Bugün depodan hiçbir şey çıkmadı"); }
+  }
+  el.innerHTML = h;
+}
+function depoTabloRender(){
+  const el = document.getElementById("depoTable"); if (!el) return;
+  const ayEl = document.getElementById("depoAy");
+  if (!ayEl.value) ayEl.value = iso(new Date()).slice(0,7);
+  const ay = ayEl.value;
+  const rows = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih.startsWith(ay)).sort((a,b)=>b.t-a.t);
+  document.getElementById("depoOzet").textContent = ayEtiket(ay) + " · Kayıt: " + rows.length + " · Giriş: " + rows.filter(r=>r.tur==="GİRİŞ").length + " · Çıkış: " + rows.filter(r=>r.tur==="ÇIKIŞ").length;
+  el.innerHTML = rows.length
+    ? "<tr><th>Tarih</th><th>Saat</th><th>Personel</th><th>Depo</th><th>İşlem</th><th>Mal</th></tr>" +
+      rows.map(r=>`<tr><td>${fmtTarih(r.tarih)}</td><td>${r.saat}</td><td class="l">${esc(r.personel)}</td><td>${esc(r.depo)}</td><td>${r.tur}</td><td class="l wrap">${esc(r.icerik)}</td></tr>`).join("")
+    : "<tr><td>Bu ay kayıt yok.</td></tr>";
+}
+document.getElementById("depoAy").addEventListener("change", depoTabloRender);
+document.getElementById("depoCek").onclick = ()=>otomatikCek(false);
+document.getElementById("depoYukle").onclick = ()=>{
+  const t = document.getElementById("depoYapistir").value;
+  if (!t.trim()) return toast("Önce tabloyu yapıştır");
+  if (depoYukle(t, false)) document.getElementById("depoYapistir").value = "";
+};
+
 // ---- Başlat ----
-function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); vardiyaRender(); jimboRender(); jimboTabloRender(); cihazRender(); }
+function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); vardiyaRender(); jimboRender(); jimboTabloRender(); cihazRender(); depoRender(); depoTabloRender(); tabloKur(); yedekHatirlatRender(); }
 renderAll();
 havaCek();
 alarmKontrol();

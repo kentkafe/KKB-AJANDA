@@ -94,6 +94,9 @@
   @keyframes shake { 0%,100% { transform:none; } 25% { transform:translateX(-4px); } 75% { transform:translateX(4px); } }
   .kase { white-space:pre-wrap; font-family:inherit; font-size:14px; line-height:1.5; border:2px solid var(--gold); border-radius:10px; padding:12px; background:#fffdf5; color:var(--g); margin:0 0 10px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+  button.ghost.on { background:var(--gold); color:var(--g); border-color:var(--gold); }
+  table th, table td { white-space:nowrap; }
+  th[data-sort] { cursor:pointer; }
 </style>
 </head>
 <body>
@@ -113,6 +116,7 @@
   <button data-tab="istasyon">İstasyon & Mola</button>
   <button data-tab="giris">Vardiya Takip</button>
   <button data-tab="skt">Teşhir SKT</button>
+  <button data-tab="jimbo">Jimbo 1 & 2</button>
   <button data-tab="toptan">Toptancılar</button>
   <button data-tab="bakim">Bakım</button>
   <button data-tab="notlar">Notlar</button>
@@ -132,6 +136,10 @@
     <div class="card"><h2>Şu An Molada</h2><div id="moladaBugun"></div></div>
     <div class="card"><h2>Vardiya Takip Durumu</h2><div id="girisOzet"></div></div>
     <div class="card"><h2>Anımsatıcı <span class="muted" style="font-weight:normal">· Yaklaşanlar (24 saat)</span></h2><div id="yaklasanList"></div></div>
+    <div class="card"><h2>Jimbo 1 & Jimbo 2</h2>
+      <div class="muted" id="jimboTarih"></div>
+      <div id="jimboBugun" style="margin-top:8px"></div>
+    </div>
     <div class="card"><h2>Raf Ömrü · Teşhir Dolabı</h2>
       <div class="toolbar"><label class="muted">Gün:</label><input type="date" id="sktGun"></div>
       <div id="sktPasta"></div>
@@ -178,14 +186,30 @@
   <!-- GİRİŞ / ÇIKIŞ -->
   <section id="tab-giris" class="hidden">
     <div class="card">
-      <h2>Vardiya Takip Kayıtları</h2>
+      <h2>Vardiya Takip</h2>
       <p class="muted" id="girisSon"></p>
-      <p class="muted">VARDİYA TAKİP SİSTEMİ tablosunu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
-      <textarea class="field" id="girisYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
       <p class="muted" id="girisOto"></p>
       <button id="girisCek">Şimdi çek</button>
+      <p class="muted">Tablo otomatik çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
+      <textarea class="field" id="girisYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
       <button id="girisYukle">Yükle</button>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1pznFrTVyscC2Z8SGccNeVKzzlD40HYSLXTsXd9lDuOI/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
+    </div>
+    <div class="card">
+      <h2>Bugün Taksi Kullananlar</h2>
+      <div id="taksiBugun"></div>
+    </div>
+    <div class="card">
+      <h2>Aylık Özet · <span id="ayBaslik"></span></h2>
+      <div class="chips" id="ayChips"></div>
+      <div class="grp">Taksi</div>
+      <details><summary id="taksiVarOzet"></summary><div id="taksiVarList"></div></details>
+      <details><summary id="taksiYokOzet"></summary><div id="taksiYokList"></div></details>
+    </div>
+    <div class="card">
+      <h2>Personel Aylık Tablo</h2>
+      <p class="muted">Başlığa dokunarak sıralayabilirsin. Geç kalma: 5 dk üstü. Eksik: haftalık hedefin o aydaki payının altında kalan saat.</p>
+      <div class="scroll"><table id="ayTablo"></table></div>
     </div>
   </section>
 
@@ -230,6 +254,25 @@
     </div>
   </section>
 
+  <!-- JİMBO -->
+  <section id="tab-jimbo" class="hidden">
+    <div class="card">
+      <h2>Jimbo 1 & Jimbo 2</h2>
+      <p class="muted" id="jimboOto"></p>
+      <button id="jimboCek">Şimdi çek</button>
+      <p class="muted">Tablo otomatik çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
+      <textarea class="field" id="jimboYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <button id="jimboYukle">Yükle</button>
+      <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/118kPIZqsol7o0DGTt_7EcJn7xLExIwIomou9cDjBg00/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
+    </div>
+    <div class="card">
+      <h2>Aylık Kayıtlar</h2>
+      <div class="toolbar"><label class="muted">Ay:</label><input type="month" id="jimboAy"></div>
+      <p class="muted" id="jimboOzet"></p>
+      <div class="scroll"><table id="jimboTablo"></table></div>
+    </div>
+  </section>
+
   <!-- TOPTANCILAR -->
   <section id="tab-toptan" class="hidden">
     <div class="card">
@@ -252,8 +295,21 @@
   <!-- BAKIM -->
   <section id="tab-bakim" class="hidden">
     <div class="card">
+      <h2>Cihaz Ekle</h2>
+      <input class="field" id="cAd" placeholder="Cihaz adı (örn: POS 1, Cin Bali 1)">
+      <input class="field" id="cMarka" placeholder="Marka (örn: Ingenico)">
+      <input class="field" id="cModel" placeholder="Model">
+      <input class="field" id="cSeri" placeholder="Seri numarası">
+      <button id="cEkle">Cihaz ekle</button>
+    </div>
+    <div class="card">
+      <h2>Cihazlar</h2>
+      <div id="cihazList"></div>
+    </div>
+    <div class="card">
       <h2>Yeni Bakım Ekle</h2>
-      <input class="field" id="bAd" placeholder="Ekipman adı (örn: Buz makinesi)">
+      <select class="field" id="bCihaz"><option value="">— Cihaz seç (isteğe bağlı) —</option></select>
+      <input class="field" id="bAd" placeholder="Ekipman adı (cihaz seçmediysen ya da farklı bir ad yazacaksan)">
       <select class="field" id="bPeriyot">
         <option value="1">Her 1 ayda</option><option value="3">Her 3 ayda</option>
         <option value="6" selected>Her 6 ayda</option><option value="12">Yılda 1</option>
@@ -390,6 +446,8 @@ db.giris = db.giris || {rows:[], son:0};
 db.toptanci = db.toptanci || [];
 db.siparis = db.siparis || [];
 db.skt = db.skt || {rows:[], son:0};
+db.cihaz = db.cihaz || [];
+db.jimbo = db.jimbo || {rows:[], son:0};
 function kaydet(){ try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e){} }
 
 // ---- Yardımcılar ----
@@ -981,17 +1039,31 @@ function bakimRender(){
     ? db.bakim.map(b=>{ const d = bakimDurum(b);
         return swRow("bakim", b.id, "Bugün yapıldı",
           `<div><b>${esc(b.ad)}</b> <span class="tag ${d.sinif}">${d.etiket}</span>
-           <div class="muted">Her ${b.periyot} ayda · Son: ${fmtTarih(b.sonTarih)} · Sonraki: ${fmtTarih(iso(d.sonraki))}</div></div>`);
+           <div class="muted">Her ${b.periyot} ayda · Son: ${fmtTarih(b.sonTarih)} · Sonraki: ${fmtTarih(iso(d.sonraki))}</div>${cihazSatir(b)}</div>`);
       }).join("")
     : '<div class="muted">Henüz bakım yok.</div>';
 }
 document.getElementById("bEkle").onclick = ()=>{
-  const ad = document.getElementById("bAd").value.trim();
-  if (!ad) return toast("Ekipman adı yaz");
-  db.bakim.push({id:uid(), ad, periyot:+document.getElementById("bPeriyot").value, sonTarih: document.getElementById("bTarih").value || iso(bugun)});
+  const cih = db.cihaz.find(x=>String(x.id)===document.getElementById("bCihaz").value);
+  const ad = document.getElementById("bAd").value.trim() || (cih ? cihazEtiket(cih) : "");
+  if (!ad) return toast("Ekipman seç ya da adını yaz");
+  db.bakim.push({id:uid(), ad, periyot:+document.getElementById("bPeriyot").value, sonTarih: document.getElementById("bTarih").value || iso(bugun), cihazId: cih ? cih.id : ""});
   document.getElementById("bAd").value = "";
+  document.getElementById("bCihaz").value = "";
   kaydet(); renderAll(); toast("Bakım eklendi");
 };
+document.getElementById("cEkle").onclick = ()=>{
+  const ad = document.getElementById("cAd").value.trim();
+  if (!ad) return toast("Cihaz adı yaz");
+  db.cihaz.push({id:uid(), ad, marka:document.getElementById("cMarka").value.trim(), model:document.getElementById("cModel").value.trim(), seri:document.getElementById("cSeri").value.trim()});
+  ["cAd","cMarka","cModel","cSeri"].forEach(i=>document.getElementById(i).value="");
+  kaydet(); renderAll(); toast("Cihaz eklendi");
+};
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-cih]"); if (!b) return;
+  db.cihaz = db.cihaz.filter(x=>String(x.id)!==String(b.dataset.id));
+  kaydet(); renderAll(); toast("Cihaz silindi");
+});
 
 // ---- Notlar ----
 function notRender(){
@@ -1081,7 +1153,7 @@ document.getElementById("aramaBtn").onclick = aramaYap;
 // ---- Google Sheets otomatik çekme (15 dk) ----
 const SHEET_IST = "10011sRFN2be-ANCK6ep9Tr4mdurfgC49pSmNfaJzv8c";
 const SHEET_GIRIS = "1pznFrTVyscC2Z8SGccNeVKzzlD40HYSLXTsXd9lDuOI";
-const otoDurum = {ist:null, gir:null, skt:null, zaman:null};
+const otoDurum = {ist:null, gir:null, skt:null, jimbo:null, zaman:null};
 async function sheetCek(id, sayfa){
   const ek = sayfa ? "&sheet="+encodeURIComponent(sayfa) : "";
   const r = await fetch("https://docs.google.com/spreadsheets/d/"+id+"/gviz/tq?tqx=out:csv"+ek+"&t="+Date.now(), {cache:"no-store"});
@@ -1095,13 +1167,15 @@ function otoYaz(){
   document.getElementById("istOto").textContent = metin(otoDurum.ist);
   document.getElementById("girisOto").textContent = metin(otoDurum.gir);
   document.getElementById("sktOto").textContent = metin(otoDurum.skt);
+  document.getElementById("jimboOto").textContent = metin(otoDurum.jimbo);
 }
 async function otomatikCek(sessiz){
-  let ist = false, gir = false, skt = false;
+  let ist = false, gir = false, skt = false, jim = false;
   try { ist = istasyonYukle(await istasyonMetniGetir(), true); } catch(e){ ist = false; }
   try { gir = girisYukle(await sheetCek(SHEET_GIRIS), true); } catch(e){ gir = false; }
   try { skt = sktYukle(await sheetCek(SHEET_SKT), true); } catch(e){ skt = false; }
-  otoDurum.ist = ist; otoDurum.gir = gir; otoDurum.skt = skt; otoDurum.zaman = new Date();
+  try { jim = jimboYukle(await sheetCek(SHEET_JIMBO), true); } catch(e){ jim = false; }
+  otoDurum.ist = ist; otoDurum.gir = gir; otoDurum.skt = skt; otoDurum.jimbo = jim; otoDurum.zaman = new Date();
   otoYaz();
   if (!sessiz) toast((ist ? "İstasyon ✓" : "İstasyon ✗") + " · " + (gir ? "Vardiya ✓" : "Vardiya ✗") + " · " + (skt ? "Teşhir ✓" : "Teşhir ✗"));
 }
@@ -1245,8 +1319,228 @@ document.getElementById("sktYukle").onclick = ()=>{
   if (sktYukle(t, false)) document.getElementById("sktYapistir").value = "";
 };
 
+// ---- Cihaz (bakım) ----
+function cihazEtiket(c){ return [c.ad, c.marka, c.model].filter(Boolean).join(" ") + (c.seri ? " · Seri: "+c.seri : ""); }
+function cihazSatir(b){
+  const c = b.cihazId ? db.cihaz.find(x=>String(x.id)===String(b.cihazId)) : null;
+  return c ? `<div class="muted">Cihaz: ${esc(cihazEtiket(c))}</div>` : "";
+}
+function cihazRender(){
+  const sel = document.getElementById("bCihaz"); if (!sel) return;
+  const secili = sel.value;
+  sel.innerHTML = '<option value="">— Cihaz seç (isteğe bağlı) —</option>' + db.cihaz.map(c=>`<option value="${esc(c.id)}">${esc(cihazEtiket(c))}</option>`).join("");
+  sel.value = secili;
+  document.getElementById("cihazList").innerHTML = db.cihaz.length
+    ? db.cihaz.map(c=>`<div class="row"><div><b>${esc(c.ad)}</b><div class="muted">${esc([c.marka,c.model].filter(Boolean).join(" "))}${c.seri ? " · Seri: "+esc(c.seri) : ""}</div></div><button class="ghost" data-cih="sil" data-id="${esc(c.id)}">Sil</button></div>`).join("")
+    : '<div class="muted">Henüz cihaz eklenmedi.</div>';
+}
+
+// ---- Vardiya analizi (aylık) ----
+const AY_AD = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+let aySec = iso(new Date()).slice(0,7);
+let vSort = {key:"gec", dir:-1};
+function ayEtiket(ay){ const p = ay.split("-"); return AY_AD[+p[1]-1]+" "+p[0]; }
+function saatMs(t){ const d = new Date(t); return hm(d.getHours()*60+d.getMinutes()); }
+function gunAdiIso(t){ return GUN_AD[(new Date(t+"T00:00:00").getDay()+6)%7]; }
+function programGunleri(){
+  const map = new Map();
+  Object.keys(db.haftalar).forEach(k=>{
+    const a = parseAralik(k); if (!a) return;
+    const h = db.haftalar[k];
+    for (let idx=0; idx<7; idx++){
+      const gun = iso(new Date(a.s.getFullYear(), a.s.getMonth(), a.s.getDate()+idx));
+      h.personel.forEach(ad=>{
+        const v = ((h.program[ad]||[])[idx]||"").trim();
+        const s = saatAraligi(v);
+        if (!s && !izinMi(v)) return;
+        map.set(ad+"|"+gun, {tarih: gun, ad, izin: !s, s});
+      });
+    }
+  });
+  return [...map.values()];
+}
+function girisIlk(){ return db.giris.rows.length ? Math.min(...db.giris.rows.map(r=>r.t)) : Infinity; }
+function gunAnaliz(g, ilk){
+  const now = Date.now();
+  const base = new Date(g.tarih+"T00:00:00").getTime();
+  const bas = base + g.s.b*60000, bit = base + g.s.e*60000;
+  if (bas > now) return {gelecek:true, gec:false, dk:0, yok:false};
+  const kayit = db.giris.rows.filter(r=>sameName(g.ad, r.ad));
+  const girisler = kayit.filter(r=>/BAŞLIYOR/.test(r.islem) && r.t >= bas-180*60000 && r.t <= bit).sort((a,b)=>a.t-b.t);
+  if (girisler.length){
+    const fark = Math.round((girisler[0].t - bas)/60000);
+    return {gelecek:false, gec: fark>5, dk: Math.max(0,fark), yok:false};
+  }
+  return {gelecek:false, gec:false, dk:0, yok: now > bas+15*60000 && base >= ilk-86400000};
+}
+function taksiGunleri(ay){
+  const bug = iso(new Date());
+  const map = {};
+  db.giris.rows.forEach(r=>{
+    const t = iso(new Date(r.t));
+    if (!t.startsWith(ay) || t > bug) return;
+    if (!map[t]) map[t] = {evet:[], cikis:[]};
+    if (up(r.taksi)==="EVET") map[t].evet.push({ad:r.ad, t:r.t});
+    else if (/ÇIKIYOR/.test(r.islem)) map[t].cikis.push({ad:r.ad, t:r.t});
+  });
+  const gunler = Object.keys(map).sort().reverse();
+  return {
+    var: gunler.filter(d=>map[d].evet.length).map(d=>({tarih:d, kisiler:map[d].evet})),
+    yok: gunler.filter(d=>!map[d].evet.length && map[d].cikis.length).map(d=>({tarih:d, kisiler:map[d].cikis}))
+  };
+}
+function gunDetay(g, sinif){
+  return `<details><summary>${fmtTarih(g.tarih)} · ${gunAdiIso(g.tarih)} · ${g.kisiler.length} kayıt</summary>` +
+    g.kisiler.map(k=>`<div class="row"><span>${esc(k.ad)}</span><span class="tag ${sinif}">${saatMs(k.t)}</span></div>`).join("") + `</details>`;
+}
+function aylikTablo(ay){
+  const bug = iso(new Date());
+  const ilk = girisIlk();
+  const tum = programGunleri();
+  const gunler = tum.filter(g=>g.tarih.startsWith(ay) && g.tarih <= bug);
+  const isimler = [...new Set(tum.map(g=>g.ad))];
+  db.giris.rows.forEach(r=>{ if (!isimler.some(ad=>sameName(ad, r.ad))) isimler.push(r.ad); });
+  return isimler.map(ad=>{
+    const k = {ad, gec:0, dk:0, yok:0, izin:0, saat:0, gun:0, tk:0, tky:0, eksik:0};
+    gunler.filter(g=>sameName(ad, g.ad)).forEach(g=>{
+      if (g.izin){ k.izin++; return; }
+      k.gun++; k.saat += g.s.sure;
+      const a = gunAnaliz(g, ilk);
+      if (a.gelecek) return;
+      if (a.gec){ k.gec++; k.dk += a.dk; }
+      if (a.yok) k.yok++;
+    });
+    const kisi = db.giris.rows.filter(r=>sameName(ad, r.ad) && iso(new Date(r.t)).startsWith(ay) && iso(new Date(r.t)) <= bug);
+    const evetG = new Set(kisi.filter(r=>up(r.taksi)==="EVET").map(r=>iso(new Date(r.t))));
+    const cikG = new Set(kisi.filter(r=>up(r.taksi)!=="EVET" && /ÇIKIYOR/.test(r.islem)).map(r=>iso(new Date(r.t))));
+    k.tk = evetG.size;
+    k.tky = [...cikG].filter(d=>!evetG.has(d)).length;
+    k.eksik = Math.max(0, (Number(db.hedef)||0) * (k.gun + k.izin) / 7 - k.saat);
+    return k;
+  });
+}
+function sirala(liste){
+  const {key, dir} = vSort;
+  return liste.sort((a,b)=>{
+    const x = a[key], y = b[key];
+    if (typeof x === "string") return x.localeCompare(y, "tr") * dir;
+    return ((x - y) * dir) || a.ad.localeCompare(b.ad, "tr");
+  });
+}
+function vardiyaRender(){
+  const tbl = document.getElementById("ayTablo"); if (!tbl) return;
+  const bug = iso(new Date());
+  const bt = db.giris.rows.filter(r=>iso(new Date(r.t))===bug && up(r.taksi)==="EVET").sort((a,b)=>a.t-b.t);
+  document.getElementById("taksiBugun").innerHTML = bt.length
+    ? bt.map(r=>`<div class="row"><span>${esc(r.ad)}</span><span class="tag grn">${saatMs(r.t)}</span></div>`).join("")
+    : '<div class="muted">Bugün taksi kullanan yok.</div>';
+  const aylar = new Set([bug.slice(0,7), aySec]);
+  programGunleri().forEach(g=>aylar.add(g.tarih.slice(0,7)));
+  db.giris.rows.forEach(r=>aylar.add(iso(new Date(r.t)).slice(0,7)));
+  document.getElementById("ayChips").innerHTML = [...aylar].sort().map(ay=>`<button class="ghost${ay===aySec?" on":""}" data-ay="${ay}">${ayEtiket(ay)}</button>`).join("");
+  document.getElementById("ayBaslik").textContent = ayEtiket(aySec);
+  const tx = taksiGunleri(aySec);
+  document.getElementById("taksiVarOzet").textContent = "Taksi kullanılan günler ("+tx.var.length+")";
+  document.getElementById("taksiVarList").innerHTML = tx.var.length ? tx.var.map(g=>gunDetay(g,"grn")).join("") : '<div class="muted">Bu ay taksi kullanımı yok.</div>';
+  document.getElementById("taksiYokOzet").textContent = "Taksi kullanılmayan günler ("+tx.yok.length+")";
+  document.getElementById("taksiYokList").innerHTML = tx.yok.length ? tx.yok.map(g=>gunDetay(g,"red")).join("") : '<div class="muted">Bu ay taksiz çıkış yok.</div>';
+  const liste = sirala(aylikTablo(aySec));
+  const th = (k,etiket)=>`<th data-sort="${k}">${etiket}${vSort.key===k ? (vSort.dir>0 ? " ▲" : " ▼") : ""}</th>`;
+  tbl.innerHTML = "<tr>" + th("ad","Personel") + th("gec","Geç kalma") + th("yok","Giriş yok") + th("izin","İzin (gün)") + th("saat","Çalışılan (sa)") + th("eksik","Eksik (sa)") + th("tk","Taksi kullandı (gün)") + th("tky","Taksi kullanmadı (gün)") + "</tr>"
+    + (liste.length
+      ? liste.map(k=>`<tr><td class="l"><b>${esc(k.ad)}</b></td><td>${k.gec} (${k.dk} dk)</td><td>${k.yok}</td><td>${k.izin}</td><td>${k.saat.toFixed(1)}</td><td>${k.eksik.toFixed(1)}</td><td>${k.tk}</td><td>${k.tky}</td></tr>`).join("")
+      : "<tr><td>Kayıt yok.</td></tr>");
+}
+document.addEventListener("click", e=>{
+  const ayB = e.target.closest("[data-ay]");
+  if (ayB){ aySec = ayB.dataset.ay; vardiyaRender(); return; }
+  const th = e.target.closest("#ayTablo [data-sort]");
+  if (th){
+    const k = th.dataset.sort;
+    vSort = vSort.key===k ? {key:k, dir:-vSort.dir} : {key:k, dir: k==="ad" ? 1 : -1};
+    vardiyaRender();
+  }
+});
+
+// ---- Jimbo 1 & 2 (espresso makineleri) ----
+const SHEET_JIMBO = "118kPIZqsol7o0DGTt_7EcJn7xLExIwIomou9cDjBg00";
+function jimboYukle(text, sessiz){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if (lines.length < 2){ if (!sessiz) toast("Jimbo tablosu okunamadı"); return false; }
+  const d = lines[0].includes("\t") ? "\t" : ",";
+  const H = satirlariAyir(lines[0], d).map(h=>up(h));
+  const col = re => H.findIndex(h=>re.test(h));
+  const cZ = col(/ZAMAN/), cP = col(/PERSONEL/), cV = col(/VARDİYA|VARDIYA/), cM = col(/^MAKİNE|^MAKINE/);
+  const cMan = col(/MANOMETRE/), cT = col(/TEMİZ|TEMIZ|SAĞLAM|SAGLAM/), cS = col(/SORUNLU/);
+  const cTip = col(/^SORUN NEDİR$/), cNot = col(/SORUN NEDİR YAZ/), cAc = col(/ACİLİYET|ACILIYET/), cO = col(/ONAY/);
+  const rows = [];
+  lines.slice(1).forEach(l=>{
+    const c = satirlariAyir(l, d);
+    const m = String(c[cZ]||"").match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return;
+    const t = new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +(m[6]||0)).getTime();
+    const vt = cV>=0 ? up(c[cV]) : "";
+    const vardiya = /SABAH/.test(vt) ? "SABAH" : /AK[ŞS]AM/.test(vt) ? "AKŞAM" : "";
+    const mk = cM>=0 ? up(c[cM]) : "";
+    const makine = /J[İI]MBO\s*1/.test(mk) ? "1" : /J[İI]MBO\s*2/.test(mk) ? "2" : "";
+    if (!vardiya || !makine) return;
+    const teslim = (cT>=0 && up(c[cT])==="EVET") || (cO>=0 && !!String(c[cO]||"").trim());
+    const sv = cS>=0 ? String(c[cS]||"").trim() : "";
+    const sorunlu = !!sv && !/^(HAYIR|YOK|-|—|–)$/.test(up(sv));
+    const sorunMetni = [cTip>=0 ? c[cTip] : "", cNot>=0 ? c[cNot] : ""].map(x=>String(x||"").trim()).filter(Boolean).join(" · ") || (sorunlu ? sv : "");
+    rows.push({t, tarih: iso(new Date(t)), saat: saatMs(t), personel: c[cP]||"", vardiya, makine,
+      manometre: cMan>=0 ? c[cMan] : "", teslim, sorunlu, sorunMetni, aciliyet: cAc>=0 ? c[cAc] : ""});
+  });
+  if (!rows.length){ if (!sessiz) toast("Jimbo tablosunda kayıt bulunamadı"); return false; }
+  db.jimbo = {rows, son: Date.now()};
+  kaydet(); renderAll(); if (!sessiz) toast(rows.length+" Jimbo kaydı yüklendi"); return true;
+}
+function jimboDurum(vardiya, gun, makine){
+  const rows = ((db.jimbo && db.jimbo.rows) || []).filter(r=>r.tarih===gun && r.vardiya===vardiya && r.makine===makine);
+  const teslim = rows.filter(r=>r.teslim).sort((a,b)=>a.t-b.t)[0] || null;
+  const sorun = rows.find(r=>r.sorunlu) || null;
+  return {teslim, sorun};
+}
+function jimboRender(){
+  const el = document.getElementById("jimboBugun"); if (!el) return;
+  const bug = iso(new Date());
+  document.getElementById("jimboTarih").textContent = bugunStr() + " · " + GUN_AD[bugunIdx];
+  const {cal} = bugunListeleri();
+  const sabahlar = cal.filter(x=>x.tur==="Sabahçılar").map(x=>x.ad);
+  const aksamlar = cal.filter(x=>x.tur==="Akşamcılar").map(x=>x.ad);
+  const blok = (baslik, vardiya, kisiler)=>
+    `<div class="grp">${baslik}${kisiler.length ? " · "+esc(kisiler.join(", ")) : ""}</div>` +
+    [1,2].map(m=>{
+      const d = jimboDurum(vardiya, bug, String(m));
+      const isim = "Jimbo "+m;
+      if (!d.teslim) return `<div class="durum no"><span class="ikon">✗</span><div><b>${isim}</b><div class="muted">${baslik} makineyi teslim almadı</div></div></div>`;
+      if (d.sorun) return `<div class="durum no"><span class="ikon">✗</span><div><b>${isim} teslim alındı · ${saatMs(d.teslim.t)}</b><div class="muted">Sorun var, personel bildirdi: ${esc(d.sorun.sorunMetni || "")}</div></div></div>`;
+      return `<div class="durum ok"><span class="ikon">✓</span><div><b>${isim} teslim alındı · ${saatMs(d.teslim.t)}</b><div class="muted">Sorunsuz çalışıyor · ${esc(d.teslim.personel)}</div></div></div>`;
+    }).join("");
+  el.innerHTML = blok("Sabahçı personel", "SABAH", sabahlar) + blok("Akşamcı personel", "AKŞAM", aksamlar);
+}
+function jimboTabloRender(){
+  const el = document.getElementById("jimboTablo"); if (!el) return;
+  const ayEl = document.getElementById("jimboAy");
+  if (!ayEl.value) ayEl.value = iso(new Date()).slice(0,7);
+  const ay = ayEl.value;
+  const rows = ((db.jimbo && db.jimbo.rows) || []).filter(r=>r.tarih.startsWith(ay)).sort((a,b)=>b.t-a.t);
+  document.getElementById("jimboOzet").textContent = ayEtiket(ay) + " · Kayıt: " + rows.length + " · Teslim alındı: " + rows.filter(r=>r.teslim).length + " · Sorunlu: " + rows.filter(r=>r.sorunlu).length;
+  el.innerHTML = rows.length
+    ? "<tr><th>Tarih</th><th>Saat</th><th>Personel</th><th>Vardiya</th><th>Makine</th><th>Manometre</th><th>Teslim</th><th>Sorun</th><th>Aciliyet</th></tr>" +
+      rows.map(r=>`<tr><td>${fmtTarih(r.tarih)}</td><td>${r.saat}</td><td class="l">${esc(r.personel)}</td><td>${r.vardiya==="SABAH" ? "Sabah" : "Akşam"}</td><td>Jimbo ${r.makine}</td><td>${esc(r.manometre)}</td><td>${r.teslim ? '<span class="tag grn">Evet</span>' : '<span class="tag red">Hayır</span>'}</td><td>${r.sorunlu ? '<span class="tag red">'+esc(r.sorunMetni || "Sorun")+'</span>' : '<span class="tag grn">Yok</span>'}</td><td>${esc(r.aciliyet)}</td></tr>`).join("")
+    : "<tr><td>Bu ay kayıt yok.</td></tr>";
+}
+document.getElementById("jimboCek").onclick = ()=>otomatikCek(false);
+document.getElementById("jimboYukle").onclick = ()=>{
+  const t = document.getElementById("jimboYapistir").value;
+  if (!t.trim()) return toast("Önce tabloyu yapıştır");
+  if (jimboYukle(t, false)) document.getElementById("jimboYapistir").value = "";
+};
+document.getElementById("jimboAy").addEventListener("change", jimboTabloRender);
+
 // ---- Başlat ----
-function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); }
+function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); vardiyaRender(); jimboRender(); jimboTabloRender(); cihazRender(); }
 renderAll();
 havaCek();
 alarmKontrol();

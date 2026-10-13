@@ -874,7 +874,7 @@ function istasyonRender(){
 function istasyonYukle(text, sessiz){
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   const d = lines.some(l=>l.includes("\t")) ? "\t" : ",";
-  const tarih = (lines.slice(0,3).join(" ").match(/\d{2}\.\d{2}\.\d{4}/)||[null])[0];
+  const tarih = (text.match(/\d{2}\.\d{2}\.\d{4}/)||[null])[0];
   const rows = [];
   lines.forEach(l=>{
     const c = satirlariAyir(l, d);
@@ -915,7 +915,7 @@ function toptanRender(){
     : '<div class="muted">Henüz toptancı eklenmedi.</div>';
   const son = db.siparis.filter(s=>s.tarih===bugunStr()).slice().reverse();
   document.getElementById("siparisList").innerHTML = son.length
-    ? son.map(s=>{ const t = db.toptanci.find(x=>x.id===s.tId); return `<div class="row"><div><b>${esc(t?t.ad:"Silinmiş toptancı")}</b><div class="muted">${esc(s.metin.slice(0,80))}</div></div><span class="muted">${esc(s.tarih)}</span></div>`; }).join("")
+    ? son.map(s=>{ const t = db.toptanci.find(x=>x.id===s.tId); return `<div class="row"><div><b>${esc(t?t.ad:"Silinmiş toptancı")}</b><div class="muted">${esc(s.metin.slice(0,80))}</div></div><span class="muted">${esc(s.tarih)}</span><button class="ghost" data-sip="sil" data-id="${esc(s.id)}">Sil</button></div>`; }).join("")
     : '<div class="muted">Bugün sipariş yok.</div>';
 }
 document.getElementById("tEkle").onclick = ()=>{
@@ -946,6 +946,12 @@ document.addEventListener("click", e=>{
   } else if (b.dataset.top==="sil"){
     db.toptanci = db.toptanci.filter(x=>x.id!==t.id); kaydet(); renderAll(); toast("Toptancı silindi");
   }
+});
+
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-sip]"); if (!b) return;
+  db.siparis = db.siparis.filter(x=>String(x.id)!==String(b.dataset.id));
+  kaydet(); renderAll(); toast("Sipariş silindi");
 });
 
 // ---- Bakım ----
@@ -1076,8 +1082,9 @@ document.getElementById("aramaBtn").onclick = aramaYap;
 const SHEET_IST = "10011sRFN2be-ANCK6ep9Tr4mdurfgC49pSmNfaJzv8c";
 const SHEET_GIRIS = "1pznFrTVyscC2Z8SGccNeVKzzlD40HYSLXTsXd9lDuOI";
 const otoDurum = {ist:null, gir:null, skt:null, zaman:null};
-async function sheetCek(id){
-  const r = await fetch("https://docs.google.com/spreadsheets/d/"+id+"/gviz/tq?tqx=out:csv&t="+Date.now(), {cache:"no-store"});
+async function sheetCek(id, sayfa){
+  const ek = sayfa ? "&sheet="+encodeURIComponent(sayfa) : "";
+  const r = await fetch("https://docs.google.com/spreadsheets/d/"+id+"/gviz/tq?tqx=out:csv"+ek+"&t="+Date.now(), {cache:"no-store"});
   if (!r.ok) throw new Error("HTTP "+r.status);
   return await r.text();
 }
@@ -1091,7 +1098,7 @@ function otoYaz(){
 }
 async function otomatikCek(sessiz){
   let ist = false, gir = false, skt = false;
-  try { ist = istasyonYukle(await sheetCek(SHEET_IST), true); } catch(e){ ist = false; }
+  try { ist = istasyonYukle(await istasyonMetniGetir(), true); } catch(e){ ist = false; }
   try { gir = girisYukle(await sheetCek(SHEET_GIRIS), true); } catch(e){ gir = false; }
   try { skt = sktYukle(await sheetCek(SHEET_SKT), true); } catch(e){ skt = false; }
   otoDurum.ist = ist; otoDurum.gir = gir; otoDurum.skt = skt; otoDurum.zaman = new Date();
@@ -1121,15 +1128,26 @@ function waNumara(tel){
 }
 function sktTarihAl(s){ const m = String(s||"").match(/(\d{2})\.(\d{2})\.(\d{4})/); return m ? m[3]+"-"+m[2]+"-"+m[1] : ""; }
 function sktSaatAl(s){ const m = String(s||"").match(/(\d{1,2}):(\d{2})/); return m ? String(m[1]).padStart(2,"0")+":"+m[2] : ""; }
+const SKT_KOLON = /imha|son\s*g[üu]n|skt|raf|tarih|zaman|saat|başlang|bitiş|kayıt|kayit|beyan|toplam/i;
+function sktMiktarAl(h, v){
+  const t = String(v||"").trim();
+  if (!t || /\d{2}\.\d{2}\.\d{4}/.test(t)) return null;
+  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*([A-Za-zÇĞİÖŞÜçğıöşü]*)/);
+  if (!m) return null;
+  const sayi = parseFloat(m[1].replace(",", "."));
+  if (!(sayi > 0)) return null;
+  const birim = (m[2] || (/kutu/i.test(h) ? "kutu" : /adet/i.test(h) ? "adet" : "")).toLowerCase();
+  return {sayi, birim};
+}
 function sktYukle(text, sessiz){
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   if (lines.length < 2){ if (!sessiz) toast("Teşhir tablosu okunamadı"); return false; }
   const d = lines[0].includes("\t") ? "\t" : ",";
   const head = satirlariAyir(lines[0], d).map(h=>h.trim());
   const adIdx = head.findIndex(h=>/personel|isim|ad soyad|^ad$/i.test(h));
-  const sktIdx = head.findIndex(h=>/raf|skt|imha/i.test(h));
+  const sktIdx = head.findIndex(h=>/raf|skt|imha|son\s*g[üu]n/i.test(h));
   const kayitIdx = head.findIndex(h=>/zaman|timestamp|kayıt|kayit/i.test(h));
-  const urunCol = head.map((h,i)=>i).filter(i=>head[i] && !SKT_ATLA.test(head[i]) && !/^\d/.test(head[i]));
+  const urunCols = head.map((h,i)=>i).filter(i=>head[i] && !SKT_ATLA.test(head[i]) && !SKT_KOLON.test(head[i]) && !/^\d/.test(head[i]));
   const rows = [];
   lines.slice(1).forEach(l=>{
     const c = satirlariAyir(l, d);
@@ -1139,9 +1157,9 @@ function sktYukle(text, sessiz){
     if (!skt){ const tum = c.map(sktTarihAl).filter(Boolean); skt = tum[tum.length-1] || ""; }
     if (!skt) return;
     const saat = (sktIdx>=0 ? sktSaatAl(c[sktIdx]) : "") || "01:00";
-    urunCol.forEach(i=>{
-      const sayi = parseFloat(String(c[i]||"").replace(",", "."));
-      if (sayi > 0) rows.push({urun: head[i], adet: String(c[i]).trim(), kaydeden, skt, saat, kayit});
+    urunCols.forEach(i=>{
+      const m = sktMiktarAl(head[i], c[i]); if (!m) return;
+      rows.push({urun: head[i].replace(/\(.*?\)/g,"").trim() || head[i], adet: m.sayi+(m.birim ? " "+m.birim : ""), kaydeden, skt, saat, kayit});
     });
   });
   if (!rows.length){ if (!sessiz) toast("Teşhir tablosunda ürün bulunamadı"); return false; }
@@ -1154,19 +1172,17 @@ function sktRender(){
     const saat = r.saat || "01:00";
     return {...r, saat, ms: new Date(r.skt+"T"+saat+":00").getTime()};
   });
-  // Teşhir SKT sekmesi: son 7 gün ve ileri
   const tb = document.getElementById("sktTable");
   if (tb){
     const liste = rows.filter(r=>r.ms >= nowMs - 7*86400000).sort((a,b)=>a.ms-b.ms);
     tb.innerHTML = liste.length
-      ? "<tr><th>Ürün</th><th>Çıkaran</th><th>SKT (gün · saat)</th><th>Durum</th></tr>" + liste.map(r=>{
+      ? "<tr><th>Ürün</th><th>Miktar</th><th>Çıkaran</th><th>SKT (gün · saat)</th><th>Durum</th></tr>" + liste.map(r=>{
           const kalanMs = r.ms - nowMs;
           const [etiket, sinif] = kalanMs <= 0 ? ["Süresi doldu","red"] : [kalan(kalanMs), kalanMs <= 3*86400000 ? "yel" : "grn"];
-          return `<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td><td><span class="tag ${sinif}">${etiket}</span></td></tr>`;
+          return `<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.adet)}</td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td><td><span class="tag ${sinif}">${etiket}</span></td></tr>`;
         }).join("")
       : "<tr><td>Kayıt yok.</td></tr>";
   }
-  // Bugün: pasta çıktı mı kontrolü
   const gunEl = document.getElementById("sktGun");
   if (gunEl && !gunEl.value) gunEl.value = iso(now);
   const gun = gunEl ? gunEl.value : iso(now);
@@ -1178,13 +1194,28 @@ function sktRender(){
       ? `<div class="durum ok"><span class="ikon">✓</span><div><b>${etiket} pasta çıktı teşhir dolabına</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))} · ${new Set(o.map(r=>r.urun)).size} ürün</div></div></div>`
       : `<div class="durum no"><span class="ikon">✗</span><div><b>${etiket} pasta çıkmadı</b><div class="muted">Bu gün için tabloda kayıt yok.</div></div></div>`;
   }
-  // Bugün: son 3 günde SKT'si dolanlar
   const el = document.getElementById("sktBugun"); if (!el) return;
   const uc = nowMs - 3*86400000;
   const dolan = rows.filter(r=>r.ms <= nowMs && r.ms >= uc).sort((a,b)=>b.ms-a.ms);
   el.innerHTML = dolan.length
-    ? '<div class="scroll"><table><tr><th>Ürün</th><th>Çıkaran</th><th>SKT doldu</th></tr>' + dolan.map(r=>`<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td></tr>`).join("") + '</table></div>'
+    ? '<div class="scroll"><table><tr><th>Ürün</th><th>Miktar</th><th>Çıkaran</th><th>SKT doldu</th></tr>' + dolan.map(r=>`<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.adet)}</td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td></tr>`).join("") + '</table></div>'
     : '<div class="muted">Son 3 günde SKT\'si dolan ürün yok.</div>';
+}
+// İstasyon: haftanın her günü ayrı sayfa; bugünün tarihini taşıyan sayfayı bul
+async function istasyonMetniGetir(){
+  const bug = iso(new Date());
+  const adaylar = [];
+  for (let i=0;i<7;i++){
+    const ad = GUN_AD[i], baslik = ad.charAt(0) + ad.slice(1).toLocaleLowerCase("tr");
+    [ad, baslik, GUN_KISA[i]].forEach(a=>adaylar.push({i, a}));
+  }
+  const sonuc = await Promise.all(adaylar.map(x=>sheetCek(SHEET_IST, x.a).then(t=>({...x, t})).catch(()=>null)));
+  const gecerli = sonuc.filter(x=>x && x.t && !/setResponse|<html/i.test(x.t) && /,|\t/.test(x.t));
+  const bugunku = gecerli.find(x=>sktTarihAl(x.t)===bug);
+  if (bugunku) return bugunku.t;
+  const yedek = gecerli.find(x=>x.i===bugunIdx);
+  if (yedek) return yedek.t;
+  throw new Error("Bugünün sayfası bulunamadı");
 }
 document.getElementById("sktGun").addEventListener("change", sktRender);
 
@@ -1193,7 +1224,7 @@ const KONUM_AD = "KENT KAFE";
 const KONUM_ADRES = "Canbalı, Atatürk Kültür Parkı, 16700 Karacabey/Bursa";
 const KONUM_GOOGLE = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(KONUM_AD + ", " + KONUM_ADRES);
 const KONUM_APPLE = "https://maps.apple.com/?q=" + encodeURIComponent(KONUM_AD + ", " + KONUM_ADRES);
-const KASE = "BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT\nSANAYİ VE TİCARET LİMİTED ŞİRKETİ\nTABAKLAR MAH. DR. RÜSTÜ ÖZÜT CAD. ISMAIL HAKKI ATIS IS MERKEZI No:6\n16700 KARACABEY/ Bursa\nVergi Dairesi: KARACABEY VERGİ DAİRESİ\nVKN: 1630417026";
+const KASE = "BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT\nSANAYİ VE TİCARET LİMİTED ŞİRKETİ\nTABAKLAR MAH. DR. RÜSTÜ ÖZÜT CAD. ISMAIL HAKKI ATIS IS MERKEZI No:6\n16700 KARACABEY/ Bursa\nWeb Sitesi: belkarltd.com.tr\nE-Posta: belkarsirketi16@gmail.com\nTel: 0224 676 66 02\nVergi Dairesi: KARACABEY VERGİ DAİRESİ\nVKN: 1630417026";
 function waGonder(metin){ window.open("https://wa.me/?text="+encodeURIComponent(metin), "_blank"); }
 document.getElementById("konumGoogle").onclick = ()=>waGonder(KONUM_AD+"\n"+KONUM_ADRES+"\n"+KONUM_GOOGLE);
 document.getElementById("konumApple").onclick = ()=>waGonder(KONUM_AD+"\n"+KONUM_ADRES+"\n"+KONUM_APPLE);

@@ -64,6 +64,37 @@
   #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--g); color:var(--w); padding:10px 14px; border-radius:10px; display:none; z-index:30; font-size:14px; max-width:92vw; }
   details summary { cursor:pointer; color:var(--g); font-weight:bold; margin:8px 0; }
 </style>
+<style>
+  :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
+  header { background:linear-gradient(135deg,#0a3b22 0%,#0d4a2b 55%,#17663d 100%); border-bottom:2px solid var(--gold); box-shadow:0 2px 12px rgba(0,0,0,.18); }
+  header h1 { color:var(--gold2); letter-spacing:3px; text-shadow:0 1px 0 rgba(0,0,0,.3); }
+  header .sub { color:#f7ecc4; letter-spacing:.5px; }
+  button, .btn { background:linear-gradient(135deg,#e2bf4e,#b8912a); color:#0d4a2b; font-weight:600; box-shadow:0 2px 6px rgba(184,145,42,.35); transition:transform .12s, box-shadow .2s; }
+  button:active, .btn:active { transform:scale(.96); }
+  button.ghost { background:var(--w); color:var(--g); border:1px solid var(--gold); box-shadow:none; }
+  button.search-btn { background:linear-gradient(135deg,#e2bf4e,#b8912a); }
+  nav { border-bottom:1px solid #e3d59a; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  nav button { background:none; color:#3c5a48; box-shadow:none; font-weight:500; transition:color .2s, transform .15s, border-color .25s; }
+  nav button:hover { color:var(--g); }
+  nav button:active { transform:scale(.92); }
+  nav button.on { color:var(--gdark); font-weight:700; border-bottom-color:var(--gold); background:linear-gradient(180deg,rgba(212,175,55,0),rgba(212,175,55,.16)); }
+  .card { border-top:3px solid var(--gold); box-shadow:0 4px 14px rgba(13,74,43,.08); transition:box-shadow .25s; }
+  .card:active { box-shadow:0 2px 6px rgba(13,74,43,.12); }
+  th { background:var(--g); color:var(--gold2); }
+  .tag.grn { background:#d6eedf; color:var(--g); }
+  main section:not(.hidden) { animation:fadeUp .4s ease both; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  .durum { display:flex; gap:12px; align-items:center; padding:12px; border-radius:12px; margin-bottom:10px; }
+  .durum.ok { background:#e3f4e8; border:1px solid #9fd3ae; }
+  .durum.no { background:#fbe7e5; border:1px solid #e9a59e; }
+  .durum .ikon { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:bold; color:#fff; flex:0 0 40px; }
+  .durum.ok .ikon { background:#1e8a4c; animation:pop .5s ease; }
+  .durum.no .ikon { background:var(--r); animation:shake .5s ease; }
+  @keyframes pop { 0% { transform:scale(.3); } 70% { transform:scale(1.15); } 100% { transform:scale(1); } }
+  @keyframes shake { 0%,100% { transform:none; } 25% { transform:translateX(-4px); } 75% { transform:translateX(4px); } }
+  .kase { white-space:pre-wrap; font-family:inherit; font-size:14px; line-height:1.5; border:2px solid var(--gold); border-radius:10px; padding:12px; background:#fffdf5; color:var(--g); margin:0 0 10px; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+</style>
 </head>
 <body>
 <header>
@@ -80,12 +111,12 @@
   <button data-tab="bugun" class="on">Bugün</button>
   <button data-tab="program">Haftalık Program</button>
   <button data-tab="istasyon">İstasyon & Mola</button>
+  <button data-tab="giris">Vardiya Takip</button>
   <button data-tab="skt">Teşhir SKT</button>
   <button data-tab="toptan">Toptancılar</button>
   <button data-tab="bakim">Bakım</button>
   <button data-tab="notlar">Notlar</button>
   <button data-tab="mesaj">WhatsApp</button>
-  <button data-tab="giris">Vardiya Takip</button>
 </nav>
 
 <main>
@@ -102,6 +133,9 @@
     <div class="card"><h2>Vardiya Takip Durumu</h2><div id="girisOzet"></div></div>
     <div class="card"><h2>Anımsatıcı <span class="muted" style="font-weight:normal">· Yaklaşanlar (24 saat)</span></h2><div id="yaklasanList"></div></div>
     <div class="card"><h2>Raf Ömrü · Teşhir Dolabı</h2>
+      <div class="toolbar"><label class="muted">Gün:</label><input type="date" id="sktGun"></div>
+      <div id="sktPasta"></div>
+      <div class="grp">Son 3 günde SKT'si dolanlar</div>
       <div id="sktBugun"></div>
     </div>
     <div class="card"><h2>Yaklaşan Bakımlar</h2><div id="bakimOzet"></div></div>
@@ -270,6 +304,22 @@
       <h2>Kendi Mesajın</h2>
       <textarea class="field" id="mMesaj" rows="3" placeholder="Mesajını yaz"></textarea>
       <a id="waLink" href="#" target="_blank" style="text-decoration:none"><button>WhatsApp'ta Aç</button></a>
+    </div>
+    <div class="card">
+      <h2>Konum Gönder</h2>
+      <p class="muted">Bir harita seç, WhatsApp'ta kişiyi seçip gönder.</p>
+      <div class="toolbar">
+        <button id="konumGoogle">Google Haritalar</button>
+        <button class="ghost" id="konumApple">Apple Haritalar</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Kaşe Bilgileri</h2>
+      <pre class="kase" id="kaseMetin"></pre>
+      <div class="toolbar">
+        <button id="kaseGonder">WhatsApp'tan gönder</button>
+        <button class="ghost" id="kaseKopya">Kopyala</button>
+      </div>
     </div>
   </section>
 </main>
@@ -871,7 +921,7 @@ function toptanRender(){
 document.getElementById("tEkle").onclick = ()=>{
   const ad = document.getElementById("tAd").value.trim();
   if (!ad) return toast("Toptancı adı yaz");
-  db.toptanci.push({id:uid(), ad, tel:document.getElementById("tTel").value.trim(), gunler:document.getElementById("tGun").value.trim()});
+  db.toptanci.push({id:uid(), ad, tel:waNumara(document.getElementById("tTel").value), gunler:document.getElementById("tGun").value.trim()});
   ["tAd","tTel","tGun"].forEach(i=>document.getElementById(i).value="");
   kaydet(); renderAll(); toast("Toptancı eklendi");
 };
@@ -879,7 +929,7 @@ document.addEventListener("click", e=>{
   const b = e.target.closest("[data-top]"); if (!b) return;
   const t = db.toptanci.find(x=>String(x.id)===String(b.dataset.id)); if (!t) return;
   if (b.dataset.top==="siparis"){
-    const tel = (t.tel||"").replace(/\D/g,"");
+    const tel = waNumara(t.tel);
     openModal("Sipariş: "+t.ad, `
       <textarea class="field" data-f="metin" rows="6" placeholder="Ürün - adet, satır satır&#10;Örn: Süt - 20 koli"></textarea>
       <div class="toolbar"><button class="ghost" id="sipKopya" type="button">Metni kopyala</button></div>
@@ -1062,7 +1112,15 @@ function copyText(metin){
 // ---- Teşhir dolabı raf ömrü ----
 const SHEET_SKT = "1J6coyDr6WscOrZLP7XsGL8MhKXVwy7CsZJlukfYz6n0";
 const SKT_ATLA = /^(zaman.*|tarih.*|başlang.*|baslang.*|bitiş.*|bitis.*|raf.*|skt|imha.*|son.*|toplam.*|beyan.*|personel.*|ad|ad soyad|isim|not|kaydeden|sorumlu.*|onay.*|taksi.*|vardiya.*|teşhir.*|teshir.*)$/i;
+function waNumara(tel){
+  let d = String(tel||"").replace(/\D/g,"");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("0")) d = "90" + d.slice(1);
+  if (d.length === 10 && d.startsWith("5")) d = "90" + d;
+  return d;
+}
 function sktTarihAl(s){ const m = String(s||"").match(/(\d{2})\.(\d{2})\.(\d{4})/); return m ? m[3]+"-"+m[2]+"-"+m[1] : ""; }
+function sktSaatAl(s){ const m = String(s||"").match(/(\d{1,2}):(\d{2})/); return m ? String(m[1]).padStart(2,"0")+":"+m[2] : ""; }
 function sktYukle(text, sessiz){
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   if (lines.length < 2){ if (!sessiz) toast("Teşhir tablosu okunamadı"); return false; }
@@ -1070,17 +1128,20 @@ function sktYukle(text, sessiz){
   const head = satirlariAyir(lines[0], d).map(h=>h.trim());
   const adIdx = head.findIndex(h=>/personel|isim|ad soyad|^ad$/i.test(h));
   const sktIdx = head.findIndex(h=>/raf|skt|imha/i.test(h));
+  const kayitIdx = head.findIndex(h=>/zaman|timestamp|kayıt|kayit/i.test(h));
   const urunCol = head.map((h,i)=>i).filter(i=>head[i] && !SKT_ATLA.test(head[i]) && !/^\d/.test(head[i]));
   const rows = [];
   lines.slice(1).forEach(l=>{
     const c = satirlariAyir(l, d);
     const kaydeden = c[adIdx>=0 ? adIdx : 1] || "";
+    const kayit = kayitIdx>=0 ? sktTarihAl(c[kayitIdx]) : (c.map(sktTarihAl).find(Boolean) || "");
     let skt = sktIdx>=0 ? sktTarihAl(c[sktIdx]) : "";
     if (!skt){ const tum = c.map(sktTarihAl).filter(Boolean); skt = tum[tum.length-1] || ""; }
     if (!skt) return;
+    const saat = (sktIdx>=0 ? sktSaatAl(c[sktIdx]) : "") || "01:00";
     urunCol.forEach(i=>{
       const sayi = parseFloat(String(c[i]||"").replace(",", "."));
-      if (sayi > 0) rows.push({urun: head[i], adet: String(c[i]).trim(), kaydeden, skt});
+      if (sayi > 0) rows.push({urun: head[i], adet: String(c[i]).trim(), kaydeden, skt, saat, kayit});
     });
   });
   if (!rows.length){ if (!sessiz) toast("Teşhir tablosunda ürün bulunamadı"); return false; }
@@ -1088,31 +1149,58 @@ function sktYukle(text, sessiz){
   kaydet(); renderAll(); if (!sessiz) toast(rows.length+" teşhir kaydı yüklendi"); return true;
 }
 function sktRender(){
-  const bugunIso = iso(new Date());
-  const ucGunOnce = iso(new Date(Date.now()-3*86400000));
-  const rows = (db.skt && db.skt.rows) || [];
+  const now = new Date(), nowMs = now.getTime();
+  const rows = ((db.skt && db.skt.rows) || []).map(r=>{
+    const saat = r.saat || "01:00";
+    return {...r, saat, ms: new Date(r.skt+"T"+saat+":00").getTime()};
+  });
+  // Teşhir SKT sekmesi: son 7 gün ve ileri
   const tb = document.getElementById("sktTable");
   if (tb){
-    const yediGun = iso(new Date(Date.now()-7*86400000));
-    const liste = rows.filter(r=>r.skt >= yediGun).sort((a,b)=>a.skt<b.skt?-1:a.skt>b.skt?1:0);
+    const liste = rows.filter(r=>r.ms >= nowMs - 7*86400000).sort((a,b)=>a.ms-b.ms);
     tb.innerHTML = liste.length
-      ? "<tr><th>Ürün</th><th>Adet</th><th>Kaydeden</th><th>SKT</th><th>Durum</th></tr>" + liste.map(r=>{
-          const fark = Math.round((new Date(r.skt+"T00:00") - new Date(bugunIso+"T00:00"))/86400000);
-          const [etiket, sinif] = fark < 0 ? ["Süresi geçti","red"] : fark === 0 ? ["Bugün doluyor","red"] : ["Kalan "+fark+" gün", fark<=3 ? "yel" : "grn"];
-          return `<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.adet)}</td><td>${esc(r.kaydeden)}</td><td>${fmtTarih(r.skt)}</td><td><span class="tag ${sinif}">${etiket}</span></td></tr>`;
+      ? "<tr><th>Ürün</th><th>Çıkaran</th><th>SKT (gün · saat)</th><th>Durum</th></tr>" + liste.map(r=>{
+          const kalanMs = r.ms - nowMs;
+          const [etiket, sinif] = kalanMs <= 0 ? ["Süresi doldu","red"] : [kalan(kalanMs), kalanMs <= 3*86400000 ? "yel" : "grn"];
+          return `<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td><td><span class="tag ${sinif}">${etiket}</span></td></tr>`;
         }).join("")
       : "<tr><td>Kayıt yok.</td></tr>";
   }
+  // Bugün: pasta çıktı mı kontrolü
+  const gunEl = document.getElementById("sktGun");
+  if (gunEl && !gunEl.value) gunEl.value = iso(now);
+  const gun = gunEl ? gunEl.value : iso(now);
+  const pastaEl = document.getElementById("sktPasta");
+  if (pastaEl){
+    const o = rows.filter(r=>r.kayit===gun);
+    const etiket = gun===iso(now) ? "Bugün" : fmtTarih(gun);
+    pastaEl.innerHTML = o.length
+      ? `<div class="durum ok"><span class="ikon">✓</span><div><b>${etiket} pasta çıktı teşhir dolabına</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))} · ${new Set(o.map(r=>r.urun)).size} ürün</div></div></div>`
+      : `<div class="durum no"><span class="ikon">✗</span><div><b>${etiket} pasta çıkmadı</b><div class="muted">Bu gün için tabloda kayıt yok.</div></div></div>`;
+  }
+  // Bugün: son 3 günde SKT'si dolanlar
   const el = document.getElementById("sktBugun"); if (!el) return;
-  const dolan = rows.filter(r=>r.skt===bugunIso);
-  const gecen = rows.filter(r=>r.skt < bugunIso && r.skt >= ucGunOnce).sort((a,b)=>a.skt<b.skt?1:-1);
-  const satir = (r, etiket, sinif)=>`<div class="row"><div><b>${esc(r.urun)}</b><div class="muted">Adet: ${esc(r.adet)} · ${esc(r.kaydeden)}</div></div><span class="tag ${sinif}">${etiket} ${fmtTarih(r.skt)}</span></div>`;
-  let h = dolan.length
-    ? dolan.map(r=>satir(r, "SKT", "red")).join("")
-    : '<div class="muted">Bugün raf ömrü dolan ürün yok.</div>';
-  if (gecen.length) h += '<div class="grp">Son 3 günde süresi geçen</div>' + gecen.map(r=>satir(r, "SKT", "yel")).join("");
-  el.innerHTML = h;
+  const uc = nowMs - 3*86400000;
+  const dolan = rows.filter(r=>r.ms <= nowMs && r.ms >= uc).sort((a,b)=>b.ms-a.ms);
+  el.innerHTML = dolan.length
+    ? '<div class="scroll"><table><tr><th>Ürün</th><th>Çıkaran</th><th>SKT doldu</th></tr>' + dolan.map(r=>`<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td></tr>`).join("") + '</table></div>'
+    : '<div class="muted">Son 3 günde SKT\'si dolan ürün yok.</div>';
 }
+document.getElementById("sktGun").addEventListener("change", sktRender);
+
+// ---- Konum & kaşe (WhatsApp) ----
+const KONUM_AD = "KENT KAFE";
+const KONUM_ADRES = "Canbalı, Atatürk Kültür Parkı, 16700 Karacabey/Bursa";
+const KONUM_GOOGLE = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(KONUM_AD + ", " + KONUM_ADRES);
+const KONUM_APPLE = "https://maps.apple.com/?q=" + encodeURIComponent(KONUM_AD + ", " + KONUM_ADRES);
+const KASE = "BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT\nSANAYİ VE TİCARET LİMİTED ŞİRKETİ\nTABAKLAR MAH. DR. RÜSTÜ ÖZÜT CAD. ISMAIL HAKKI ATIS IS MERKEZI No:6\n16700 KARACABEY/ Bursa\nVergi Dairesi: KARACABEY VERGİ DAİRESİ\nVKN: 1630417026";
+function waGonder(metin){ window.open("https://wa.me/?text="+encodeURIComponent(metin), "_blank"); }
+document.getElementById("konumGoogle").onclick = ()=>waGonder(KONUM_AD+"\n"+KONUM_ADRES+"\n"+KONUM_GOOGLE);
+document.getElementById("konumApple").onclick = ()=>waGonder(KONUM_AD+"\n"+KONUM_ADRES+"\n"+KONUM_APPLE);
+document.getElementById("kaseGonder").onclick = ()=>waGonder(KASE);
+document.getElementById("kaseKopya").onclick = ()=>copyText(KASE);
+document.getElementById("kaseMetin").textContent = KASE;
+
 function haftaAraligiYazi(){
   const k = aktifHaftaKey(); if (k) return k;
   const pzt = new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate()-bugunIdx);

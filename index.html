@@ -111,6 +111,9 @@
   td.wrap { white-space:normal; min-width:200px; text-align:left; }
   .filtreler { flex-wrap:wrap; }
   .filtreler select { font-size:13px; padding:6px; border-radius:8px; border:1px solid #bcd3c4; max-width:100%; }
+  nav button { text-transform:uppercase; font-size:13px; }
+  h2 { text-transform:uppercase; text-align:center; }
+  th, .grp { text-align:center; text-transform:uppercase; }
 </style>
 </head>
 <body>
@@ -131,7 +134,7 @@
   <button data-tab="istasyon">İstasyon & Mola</button>
   <button data-tab="giris">Vardiya Takip</button>
   <button data-tab="skt">Teşhir SKT</button>
-  <button data-tab="jimbo">Jimbo 1 & 2</button>
+  <button data-tab="jimbo">Espresso Makineleri</button>
   <button data-tab="depo">Depo</button>
   <button data-tab="toptan">Toptancılar</button>
   <button data-tab="bakim">Bakım</button>
@@ -147,24 +150,14 @@
       <div class="muted" id="tarihStr"></div>
       <div class="muted" id="hava" style="margin-top:6px">Hava durumu yükleniyor...</div>
     </div>
+    <div class="card"><h2>Şu An Molada</h2><div id="moladaBugun"></div></div>
     <div class="card"><h2>Bugün Çalışan</h2><div id="calisanList"></div></div>
     <div class="card"><h2>Bugün İzinli</h2><div id="izinList"></div></div>
-    <div class="card"><h2>Şu An Molada</h2><div id="moladaBugun"></div></div>
     <div class="card"><h2>Vardiya Takip Durumu</h2><div id="girisOzet"></div></div>
-    <div class="card"><h2>Anımsatıcı <span class="muted" style="font-weight:normal">· Yaklaşanlar (24 saat)</span></h2><div id="yaklasanList"></div></div>
-    <div class="card"><h2>Jimbo 1 & Jimbo 2</h2>
-      <div class="muted" id="jimboTarih"></div>
-      <div id="jimboBugun" style="margin-top:8px"></div>
-    </div>
-    <div class="card"><h2>Depo Takip</h2>
-      <div id="depoBugun"></div>
-    </div>
-    <div class="card"><h2>Raf Ömrü · Teşhir Dolabı</h2>
-      <div class="toolbar"><label class="muted">Gün:</label><input type="date" id="sktGun"></div>
-      <div id="sktPasta"></div>
-      <div class="grp">Son 3 günde SKT'si dolanlar</div>
-      <div id="sktBugun"></div>
-    </div>
+    <div class="card"><h2>Espresso Makineleri</h2><div class="muted" id="jimboTarih"></div><div id="jimboBugun"></div></div>
+    <div class="card"><h2>Anımsatıcı</h2><div id="yaklasanList"></div></div>
+    <div class="card"><h2>Teşhir Dolabı · Pasta</h2><div id="sktPasta"></div></div>
+    <div class="card"><h2>Depo Takip</h2><div id="depoBugun"></div></div>
     <div class="card"><h2>Yaklaşan Bakımlar</h2><div id="bakimOzet"></div></div>
     <div class="card"><h2>Veri Yedeği</h2>
       <p class="muted">Safari'de geçmişi temizlersen uygulama verileri silinebilir. Ara sıra "Yedeği WhatsApp'a gönder" de: telefonun paylaş menüsü açılır, WhatsApp'ı seçip kendine ya da grubuna yollarsın. Gerekirse dosyayı "Yedek yükle" ile geri getirirsin.</p>
@@ -181,7 +174,6 @@
     <div class="card">
       <h2>Haftalık Program PDF'i Yükle</h2>
       <div class="upload">
-        <p class="muted" style="margin:0 0 8px">Grupta paylaşılan haftalık programın PDF'ini seç. Hafta tarihiyle arşive kaydedilir.</p>
         <input type="file" id="pdfInput" accept="application/pdf">
       </div>
       <div class="toolbar">
@@ -195,7 +187,6 @@
     </div>
     <div class="card">
       <h2 id="progBaslik">HAFTALIK ÇALIŞMA PROGRAMI</h2>
-      <p class="muted">Vardiya saatini yaz. <b>OFF</b> haftalık izin (kırmızı), <b>-</b> yıllık/ücretli/ücretsiz izin (mor). Boş hücre izin sayılmaz.</p>
       <div class="scroll"><table id="progTable"></table></div>
       <div class="toolbar" style="margin-top:10px">
         <button id="progSave">Kaydet</button>
@@ -206,7 +197,6 @@
     <div class="card">
       <h2>Kişi Bazında Haftalık Özet</h2>
       <div class="scroll"><table id="ozetTable" data-filtre></table></div>
-      <p class="muted">Eksik çalışma: hedefin altında kalan. Mesai: hedefin üstünde kalan.</p>
     </div>
   </section>
 
@@ -217,9 +207,8 @@
       <p class="muted" id="girisSon"></p>
       <p class="muted" id="girisOto"></p>
       <button id="girisCek">Şimdi çek</button>
-      <p class="muted">Tablo otomatik çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
-      <textarea class="field" id="girisYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
-      <button id="girisYukle">Yükle</button>
+      <details><summary>Elle yapıştır</summary><textarea class="field" id="girisYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <button id="girisYukle">Yükle</button></details>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1pznFrTVyscC2Z8SGccNeVKzzlD40HYSLXTsXd9lDuOI/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
     <div class="card">
@@ -235,7 +224,6 @@
     </div>
     <div class="card">
       <h2>Personel Aylık Tablo</h2>
-      <p class="muted">Başlığa dokunarak sıralayabilirsin. Geç kalma: 5 dk üstü. Eksik: haftalık hedefin o aydaki payının altında kalan saat.</p>
       <div class="scroll"><table id="ayTablo" data-filtre></table></div>
     </div>
   </section>
@@ -257,7 +245,6 @@
     </div>
     <div class="card">
       <h2>Tabloyu Güncelle</h2>
-      <p class="muted">İSTASYON VE MOLALAR tablosunu kopyalayıp yapıştır, "Yükle"ye bas.</p>
       <textarea class="field" id="istYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
       <p class="muted" id="istOto"></p>
       <button id="istCek">Şimdi çek</button>
@@ -272,14 +259,12 @@
       <h2>Teşhir Dolabı · SKT Takip</h2>
       <p class="muted" id="sktOto"></p>
       <button id="sktCek">Şimdi çek</button>
-      <p class="muted">Tablo uygulama açılınca ve 15 dakikada bir kendiliğinden çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
-      <textarea class="field" id="sktYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
-      <button id="sktYukle">Yükle</button>
+      <details><summary>Elle yapıştır</summary><textarea class="field" id="sktYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <button id="sktYukle">Yükle</button></details>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1J6coyDr6WscOrZLP7XsGL8MhKXVwy7CsZJlukfYz6n0/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
     <div class="card">
       <h2>Kayıtlar</h2>
-      <p class="muted">Son 7 gün ve ileri tarihli kayıtlar, SKT'ye göre sıralı.</p>
       <div class="scroll"><table id="sktTable" data-filtre></table></div>
     </div>
   </section>
@@ -287,12 +272,12 @@
   <!-- JİMBO -->
   <section id="tab-jimbo" class="hidden">
     <div class="card">
-      <h2>Jimbo 1 & Jimbo 2</h2>
+      <h2>Espresso Makineleri</h2>
+      <div id="jimboTabBugun" style="margin-bottom:10px"></div>
       <p class="muted" id="jimboOto"></p>
       <button id="jimboCek">Şimdi çek</button>
-      <p class="muted">Tablo otomatik çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
-      <textarea class="field" id="jimboYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
-      <button id="jimboYukle">Yükle</button>
+      <details><summary>Elle yapıştır</summary><textarea class="field" id="jimboYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <button id="jimboYukle">Yükle</button></details>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/118kPIZqsol7o0DGTt_7EcJn7xLExIwIomou9cDjBg00/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
     <div class="card">
@@ -309,9 +294,8 @@
       <h2>Depo Takip</h2>
       <p class="muted" id="depoOto"></p>
       <button id="depoCek">Şimdi çek</button>
-      <p class="muted">Tablo otomatik çekilir. Olmazsa tabloyu kopyalayıp aşağıya yapıştır, "Yükle"ye bas.</p>
-      <textarea class="field" id="depoYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
-      <button id="depoYukle">Yükle</button>
+      <details><summary>Elle yapıştır</summary><textarea class="field" id="depoYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
+      <button id="depoYukle">Yükle</button></details>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1ar3MA08KZPr0I4pipQUMP63fKWq3CoDXTM0h5HLxCxo/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
     <div class="card">
@@ -368,7 +352,6 @@
     </div>
     <div class="card">
       <h2>Periyodik Bakımlar</h2>
-      <p class="muted">Sağa kaydır: bugün yapıldı. Sola kaydır: Düzelt, Ertele, Sil.</p>
       <div id="bakimList"></div>
     </div>
   </section>
@@ -386,13 +369,11 @@
           <option value="hafta">Her hafta</option><option value="ay">Her ay</option>
         </select>
       </div>
-      <p class="muted">Tarih ve saat girersen 24 saat önce ve tam saatinde uyarır. Tarihsiz girersen sadece not olur.</p>
       <button id="nEkle">Ekle</button>
       <button class="ghost" id="bildirimBtn">Bildirimlere izin ver</button>
     </div>
     <div class="card">
       <h2>Notlar ve Anımsatıcılar</h2>
-      <p class="muted">Sağa kaydır: yapıldı. Sola kaydır: Düzelt, Ertele, Sil.</p>
       <div id="notList"></div>
       <details><summary>Tamamlananlar</summary><div id="notBitenList"></div></details>
     </div>
@@ -402,7 +383,6 @@
   <section id="tab-mesaj" class="hidden">
     <div class="card">
       <h2>Hazır Mesajlar</h2>
-      <p class="muted">Bir mesaja dokun, WhatsApp açılsın, grubu seç ve gönder.</p>
       <div class="chips" id="sablonlar"></div>
     </div>
     <div class="card">
@@ -412,7 +392,6 @@
     </div>
     <div class="card">
       <h2>Konum Gönder</h2>
-      <p class="muted">Bir harita seç, WhatsApp'ta kişiyi seçip gönder.</p>
       <div class="toolbar">
         <button id="konumGoogle">Google Haritalar</button>
         <button class="ghost" id="konumApple">Apple Haritalar</button>
@@ -1324,23 +1303,13 @@ function sktRender(){
         }).join("")
       : "<tr><td>Kayıt yok.</td></tr>";
   }
-  const gunEl = document.getElementById("sktGun");
-  if (gunEl && !gunEl.value) gunEl.value = iso(now);
-  const gun = gunEl ? gunEl.value : iso(now);
   const pastaEl = document.getElementById("sktPasta");
   if (pastaEl){
-    const o = rows.filter(r=>r.kayit===gun);
-    const etiket = gun===iso(now) ? "Bugün" : fmtTarih(gun);
+    const o = rows.filter(r=>r.kayit===iso(now));
     pastaEl.innerHTML = o.length
-      ? `<div class="durum ok"><span class="ikon">✓</span><div><b>${etiket} pasta çıktı teşhir dolabına</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))} · ${new Set(o.map(r=>r.urun)).size} ürün</div></div></div>`
-      : `<div class="durum no"><span class="ikon">✗</span><div><b>${etiket} pasta çıkmadı</b><div class="muted">Bu gün için tabloda kayıt yok.</div></div></div>`;
+      ? `<div class="durum ok"><span class="ikon">✓</span><div><b>Pasta çıkarıldı</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))}</div></div></div>`
+      : '<div class="durum no"><span class="ikon">✗</span><div><b>Pasta çıkarılmadı</b></div></div>';
   }
-  const el = document.getElementById("sktBugun"); if (!el) return;
-  const uc = nowMs - 3*86400000;
-  const dolan = rows.filter(r=>r.ms <= nowMs && r.ms >= uc).sort((a,b)=>b.ms-a.ms);
-  el.innerHTML = dolan.length
-    ? '<div class="scroll"><table><tr><th>Ürün</th><th>Miktar</th><th>Çıkaran</th><th>SKT doldu</th></tr>' + dolan.map(r=>`<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.adet)}</td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td></tr>`).join("") + '</table></div>'
-    : '<div class="muted">Son 3 günde SKT\'si dolan ürün yok.</div>';
 }
 // İstasyon: haftanın her günü ayrı sayfa; bugünün tarihini taşıyan sayfayı bul
 async function istasyonMetniGetir(){
@@ -1358,7 +1327,6 @@ async function istasyonMetniGetir(){
   if (yedek) return yedek.t;
   throw new Error("Bugünün sayfası bulunamadı");
 }
-document.getElementById("sktGun").addEventListener("change", sktRender);
 
 // ---- Konum & kaşe (WhatsApp) ----
 const KONUM_AD = "KENT KAFE";
@@ -1585,6 +1553,7 @@ function jimboRender(){
       return `<div class="durum ok"><span class="ikon">✓</span><div><b>${isim} teslim alındı · ${saatMs(d.teslim.t)}</b><div class="muted">Sorunsuz çalışıyor · ${esc(d.teslim.personel)}</div></div></div>`;
     }).join("");
   el.innerHTML = blok("Sabahçı personel", "SABAH", sabahlar) + blok("Akşamcı personel", "AKŞAM", aksamlar);
+  const jt = document.getElementById("jimboTabBugun"); if (jt) jt.innerHTML = el.innerHTML;
 }
 function jimboTabloRender(){
   const el = document.getElementById("jimboTablo"); if (!el) return;
@@ -1767,12 +1736,12 @@ function depoRender(){
   const bug = iso(new Date());
   const bugun = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih===bug).sort((a,b)=>b.t-a.t);
   const giris = bugun.filter(r=>r.tur==="GİRİŞ"), cikis = bugun.filter(r=>r.tur==="ÇIKIŞ");
-  const satir = r=>`<div class="row"><div><b>${esc(r.depo)}</b><div class="muted">${esc(r.personel)} · ${r.saat}</div><div class="muted">${esc(r.icerik)}</div></div></div>`;
-  let h = '<div class="grp">Bugün depoya gelen mal</div>' + (giris.length ? giris.map(satir).join("") : '<div class="muted">Bugün depoya mal girişi yok.</div>');
-  h += '<div class="grp">Bugün depodan çıkan mal</div>' + (cikis.length ? cikis.map(satir).join("") : '<div class="muted">Bugün depodan mal çıkışı yok.</div>');
+  const satir = r=>`<div class="row"><b>${esc(r.depo)}</b><span class="muted">${esc(r.personel)} · ${r.saat}</span></div>`;
+  let h = '<div class="grp">Giriş</div>' + (giris.length ? giris.map(satir).join("") : '<div class="muted">Yok</div>');
+  h += '<div class="grp">Çıkış</div>' + (cikis.length ? cikis.map(satir).join("") : '<div class="muted">Yok</div>');
   if (!cikis.length && new Date().getHours() >= DEPO_UYARI_SAAT){
-    h = `<div class="durum no"><span class="ikon">✗</span><div><b>Bugün depodan hiçbir şey çıkmadı</b><div class="muted">Saat ${DEPO_UYARI_SAAT}:00'ı geçti. Çıkış işlenmemiş olabilir.</div></div></div>` + h;
-    if (depoBildirildi !== bug){ depoBildirildi = bug; bildir("Depo", "Bugün depodan hiçbir şey çıkmadı"); }
+    h = `<div class="durum no"><span class="ikon">✗</span><div><b>Bugün depodan çıkış yok</b></div></div>` + h;
+    if (depoBildirildi !== bug){ depoBildirildi = bug; bildir("Depo", "Bugün depodan çıkış yok"); }
   }
   el.innerHTML = h;
 }

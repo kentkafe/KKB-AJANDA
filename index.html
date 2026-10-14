@@ -26,6 +26,11 @@
   .grp { font-size:13px; font-weight:bold; color:var(--g); margin:10px 0 4px; }
   .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #eef4f0; font-size:15px; }
   .row:last-child { border-bottom:none; }
+  .shift-cols { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+  .shift-col .grp { text-align:center; margin-bottom:6px; }
+  .shift-kisi { display:flex; flex-direction:column; padding:6px 0; border-bottom:1px solid #eef4f0; font-size:14px; }
+  .shift-kisi:last-child { border-bottom:none; }
+  .shift-kisi .muted { font-size:12px; }
   .tag { font-size:12px; padding:3px 8px; border-radius:20px; background:var(--gl); color:var(--g); white-space:nowrap; }
   .tag.red { background:#f8dcd9; color:var(--r); }
   .tag.yel { background:#fbefd6; color:var(--y); }
@@ -166,6 +171,13 @@
         <button id="yedekIndir">Yedeği WhatsApp'a gönder</button>
         <label class="btn ghost" style="cursor:pointer">Yedek yükle<input type="file" id="yedekYukle" accept="application/json" style="display:none"></label>
       </div>
+    </div>
+    <div class="card">
+      <details>
+        <summary><b>Aylık Özet Tablosu</b></summary>
+        <div class="toolbar" style="margin-top:10px"><label class="muted">Ay:</label><input type="month" id="ozetAy"></div>
+        <div class="scroll"><table id="ozetAyTablo"></table></div>
+      </details>
     </div>
   </section>
 
@@ -788,7 +800,53 @@ document.addEventListener("pointerup", ()=>{
 });
 
 // ---- Bugün ----
+function ozetTabloRender(){
+  const el = document.getElementById("ozetAyTablo"); if (!el) return;
+  const ayEl = document.getElementById("ozetAy");
+  if (!ayEl.value) ayEl.value = iso(new Date()).slice(0,7);
+  const ay = ayEl.value;
+  const bug = iso(new Date());
+  const satirlar = [];
+  const ekle = (bolum, gosterge, deger)=> satirlar.push([bolum, gosterge, deger]);
+
+  // Personel
+  const pl = aylikTablo(ay);
+  const top = k => pl.reduce((s,x)=>s+(x[k]||0),0);
+  ekle("Personel", "Geç kalma (kişi-gün)", top("gec"));
+  ekle("Personel", "Geç kalma süresi (dk)", top("dk"));
+  ekle("Personel", "Giriş yok (gün)", top("yok"));
+  ekle("Personel", "İzin (gün)", top("izin"));
+  ekle("Personel", "Çalışılan saat", pl.reduce((s,x)=>s+x.saat,0).toFixed(1));
+  ekle("Personel", "Eksik saat", pl.reduce((s,x)=>s+x.eksik,0).toFixed(1));
+  ekle("Personel", "Taksi kullanılan gün (toplam)", top("tk"));
+
+  // Espresso
+  const jr = ((db.jimbo && db.jimbo.rows) || []).filter(r=>r.tarih.startsWith(ay));
+  ekle("Espresso", "Kayıt", jr.length);
+  ekle("Espresso", "Teslim alındı", jr.filter(r=>r.teslim).length);
+  ekle("Espresso", "Sorunlu", jr.filter(r=>r.sorunlu).length);
+
+  // Depo
+  const dr = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih.startsWith(ay));
+  ekle("Depo", "Kayıt", dr.length);
+  ekle("Depo", "Giriş", dr.filter(r=>r.tur==="GİRİŞ").length);
+  ekle("Depo", "Çıkış", dr.filter(r=>r.tur==="ÇIKIŞ").length);
+
+  // Teşhir dolabı (SKT)
+  const sr = ((db.skt && db.skt.rows) || []).filter(r=>String(r.kayit||"").startsWith(ay));
+  ekle("Teşhir Dolabı", "Kayıtlı ürün", sr.length);
+  ekle("Teşhir Dolabı", "Kayıt yapılan gün", new Set(sr.map(r=>r.kayit)).size);
+
+  // Toptan siparişleri (tarih gg.aa.yyyy)
+  const sp = (db.siparis || []).filter(s=>{ const p = String(s.tarih||"").split("."); return p.length===3 && p[2]+"-"+p[1]===ay; });
+  ekle("Toptan", "Sipariş", sp.length);
+  ekle("Toptan", "Sipariş verilen toptancı", new Set(sp.map(s=>s.tId)).size);
+
+  el.innerHTML = "<tr><th>Bölüm</th><th>Gösterge</th><th>Değer</th></tr>" +
+    satirlar.map(([b,g,d])=>`<tr><td class="l"><b>${esc(b)}</b></td><td class="l">${esc(g)}</td><td>${esc(String(d))}</td></tr>`).join("");
+}
 function bugunRender(){
+  ozetTabloRender();
   document.getElementById("gunAdi").textContent = GUN_AD[bugunIdx];
   document.getElementById("tarihStr").textContent = bugunStr();
   document.getElementById("today").textContent = haftaAraligiYazi();
@@ -800,9 +858,9 @@ function bugunRender(){
   TUR_SIRA.forEach(t=>{
     const grup = cal.filter(x=>x.tur===t);
     if (!grup.length) return;
-    c += `<div class="grp">${t}</div>` + grup.map(x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag">${esc(x.v)}</span></div>`).join("");
+    c += `<div class="shift-col"><div class="grp">${t}</div>` + grup.map(x=>`<div class="shift-kisi"><b>${esc(x.ad)}</b><span class="muted">${esc(x.v)}</span></div>`).join("") + `</div>`;
   });
-  document.getElementById("calisanList").innerHTML = c || '<div class="muted">Bugün çalışan kaydı yok.</div>';
+  document.getElementById("calisanList").innerHTML = c ? `<div class="shift-cols">${c}</div>` : '<div class="muted">Bugün çalışan kaydı yok.</div>';
   document.getElementById("izinList").innerHTML = izin.length
     ? izin.map(x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag ${morMi(x.v)?"mor":"red"}">${morMi(x.v)?"İzinli (-)":"Haftalık izin (OFF)"}</span></div>`).join("")
     : '<div class="muted">Bugün izinli personel yok.</div>';
@@ -1308,9 +1366,26 @@ function sktRender(){
     const o = rows.filter(r=>r.kayit===iso(now));
     pastaEl.innerHTML = o.length
       ? `<div class="durum ok"><span class="ikon">✓</span><div><b>Pasta çıkarıldı</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))}</div></div></div>`
-      : '<div class="durum no"><span class="ikon">✗</span><div><b>Pasta çıkarılmadı</b></div></div>';
+      : '<div class="durum no"><span class="ikon">✗</span><div><b>Pasta çıkarılmadı</b></div></div>' +
+        `<div class="toolbar" style="margin-top:8px"><button class="ghost" id="sktUyariBtn">Uyarıyı WhatsApp'a hazırla</button></div>`;
   }
 }
+function sktUyariMetni(){
+  const now = new Date(), nowMs = now.getTime();
+  const yakin = ((db.skt && db.skt.rows) || []).map(r=>({...r, ms: new Date(r.skt+"T"+(r.saat||"01:00")+":00").getTime()}))
+    .filter(r=>r.ms <= nowMs + 86400000 && r.ms >= nowMs - 7*86400000)
+    .sort((a,b)=>a.ms-b.ms);
+  let m = "⚠️ Teşhir dolabı SKT uyarısı · " + bugunStr() + " " + saatMs(nowMs) + "\n";
+  m += "Bugün pasta çıkarılmadı.\n";
+  if (yakin.length){
+    m += "\nSKT'si dolmuş ya da 24 saat içinde dolacak ürünler:\n";
+    m += yakin.map(r=>`- ${r.urun} · ${r.adet} · SKT: ${fmtTarih(r.skt)} ${r.saat||""}${r.ms <= nowMs ? " (doldu)" : ""}`).join("\n");
+  }
+  return m + "\n\nLütfen kontrol edip kaydı girin.";
+}
+document.addEventListener("click", e=>{
+  if (e.target.closest("#sktUyariBtn")) waGonder(sktUyariMetni());
+});
 // İstasyon: haftanın her günü ayrı sayfa; bugünün tarihini taşıyan sayfayı bul
 async function istasyonMetniGetir(){
   const bug = iso(new Date());
@@ -1758,6 +1833,7 @@ function depoTabloRender(){
     : "<tr><td>Bu ay kayıt yok.</td></tr>";
 }
 document.getElementById("depoAy").addEventListener("change", depoTabloRender);
+document.getElementById("ozetAy").addEventListener("change", ozetTabloRender);
 document.getElementById("depoCek").onclick = ()=>otomatikCek(false);
 document.getElementById("depoYukle").onclick = ()=>{
   const t = document.getElementById("depoYapistir").value;

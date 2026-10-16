@@ -1089,6 +1089,8 @@ function istasyonYukle(text, sessiz){
     db.istArsiv.unshift({etiket: (db.istasyon.tarih || "Tarihsiz") + " · arşivlendi " + fmtDT(Date.now()), rows: db.istasyon.rows});
     db.istArsiv = db.istArsiv.slice(0, 60);
   }
+  db.istGunler = db.istGunler || {};
+  db.istGunler[tarih ? tarih.split(".").reverse().join("-") : iso(new Date())] = {rows};
   db.istasyon = {tarih: tarih || bugunStr(), rows};
   kaydet(); renderAll(); if (!sessiz) toast("İstasyon tablosu güncellendi"); return true;
 }
@@ -1211,12 +1213,12 @@ function kapanisIsimleri(gun){
 function kapanisMeydanci(gunIso, kisiler){
   const z = kisiler.find(kapanisZeynep);
   if (z) return z;
-  if (gunIso !== iso(new Date())) return null;
-  const r = (db.istasyon && db.istasyon.rows || []).find(r=>/MEYDAN/.test(up(r.istasyon)) && kisiler.some(ad=>sameName(ad, r.ad)));
+  const gun = db.istGunler && db.istGunler[gunIso];
+  const rows = gun ? gun.rows : ((gunIso === iso(new Date()) && db.istasyon) ? db.istasyon.rows : []);
+  const r = (rows||[]).find(r=>/MEYDAN/.test(up(r.istasyon)) && kisiler.some(ad=>sameName(ad, r.ad)));
   return r ? kisiler.find(ad=>sameName(ad, r.ad)) : null;
 }
-function kapanisAtama(gunIso, kisiler, kalabalik){
-  const meydanci = kapanisMeydanci(gunIso, kisiler);
+function kapanisAtama(gunIso, kisiler, kalabalik, meydanci){
   const havuz = kisiler.filter(ad=>!kapanisBaris(ad) && ad!==meydanci);
   const sayac = {};
   Object.entries(db.kapanis.gunler).forEach(([d,v])=>{
@@ -1247,17 +1249,17 @@ function kapanisGun(gunIso){
   if (kisiler === null) return null;
   db.kapanis = db.kapanis || {gunler:{}};
   const kay = db.kapanis.gunler[gunIso];
-  const bugunMu = gunIso === iso(new Date());
-  if (kay && !bugunMu && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler)) return kay;
+  const md = kapanisMeydanci(gunIso, kisiler);
+  if (kay && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler) && (kay.meydanci||null)===(md||null)) return kay;
   const kalabalik = !!(kay && kay.kalabalik);
-  const yeni = {kisiler, kalabalik, atama: kapanisAtama(gunIso, kisiler, kalabalik)};
+  const yeni = {kisiler, kalabalik, meydanci: md||null, atama: kapanisAtama(gunIso, kisiler, kalabalik, md)};
   if (!kay || JSON.stringify(kay)!==JSON.stringify(yeni)){ db.kapanis.gunler[gunIso] = yeni; kaydet(); }
   return db.kapanis.gunler[gunIso];
 }
 function kapanisKalabalik(gunIso){
   const kay = kapanisGun(gunIso); if (!kay) return;
   kay.kalabalik = !kay.kalabalik;
-  kay.atama = kapanisAtama(gunIso, kay.kisiler, kay.kalabalik);
+  kay.atama = kapanisAtama(gunIso, kay.kisiler, kay.kalabalik, kay.meydanci);
   kaydet(); renderAll();
 }
 function kapanisHaftaTumu(){
@@ -1687,11 +1689,43 @@ async function istasyonMetniGetir(){
   }
   const sonuc = await Promise.all(adaylar.map(x=>sheetCek(SHEET_IST, x.a).then(t=>({...x, t})).catch(()=>null)));
   const gecerli = sonuc.filter(x=>x && x.t && !/setResponse|<html/i.test(x.t) && /,|\t/.test(x.t));
+  istGunleriKaydet(gecerli);
   const bugunku = gecerli.find(x=>sktTarihAl(x.t)===bug);
   if (bugunku) return bugunku.t;
   const yedek = gecerli.find(x=>x.i===bugunIdx);
   if (yedek) return yedek.t;
   throw new Error("Bugünün sayfası bulunamadı");
+}
+
+// ---- İstasyon: gün gün saklama (kapanış meydancısı için) ----
+function istasyonSatirlari(text){
+  const lines = String(text||"").split(/\r?\n/).filter(l=>l.trim());
+  const d = lines.some(l=>l.includes("\t")) ? "\t" : ",";
+  const rows = [];
+  lines.forEach(l=>{
+    const c = satirlariAyir(l, d);
+    const ad = c[0]||"";
+    if (!ad || !c[1] || up(ad).startsWith("PERSONEL") || GUN_AD.includes(up(ad))) return;
+    const molalar = [[c[2],c[3]],[c[4],c[5]],[c[6],c[7]]].filter(([b,e])=>toMin(b)!=null && toMin(e)!=null);
+    rows.push({ad, istasyon:c[1], molalar});
+  });
+  return rows;
+}
+function istGunleriKaydet(gecerli){
+  const key = aktifHaftaKey(); const a = key && parseAralik(key);
+  const pzt = a ? a.s : new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate()-bugunIdx);
+  db.istGunler = db.istGunler || {};
+  let degisti = false;
+  for (let i=0;i<7;i++){
+    const x = gecerli.find(z=>z.i===i); if (!x) continue;
+    const gi = iso(new Date(pzt.getTime() + i*86400000));
+    const rows = istasyonSatirlari(x.t);
+    if (!rows.length) continue;
+    const eski = JSON.stringify(db.istGunler[gi]||null);
+    db.istGunler[gi] = {rows};
+    if (eski !== JSON.stringify(db.istGunler[gi])) degisti = true;
+  }
+  if (degisti) kaydet();
 }
 
 // ---- Konum & kaşe (WhatsApp) ----

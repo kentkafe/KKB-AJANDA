@@ -175,8 +175,9 @@
     <div class="card">
       <details>
         <summary><b>Aylık Özet Tablosu</b></summary>
-        <div class="toolbar" style="margin-top:10px"><label class="muted">Ay:</label><input type="month" id="ozetAy"></div>
+        <div class="toolbar" style="margin-top:10px"><button class="ghost" id="ozetOnce">◀</button><input type="month" id="ozetAy"><button class="ghost" id="ozetSonra">▶</button></div>
         <div class="scroll"><table id="ozetAyTablo"></table></div>
+        <div class="scroll" style="margin-top:12px"><table id="ozetGenelTablo"></table></div>
       </details>
     </div>
   </section>
@@ -263,6 +264,12 @@
       <button id="istYukle">Yükle</button>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/10011sRFN2be-ANCK6ep9Tr4mdurfgC49pSmNfaJzv8c/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
+    <div class="card">
+      <details><summary><b>Arşiv</b></summary>
+        <div class="toolbar" style="margin-top:10px"><select class="field" id="istArsivSec"></select></div>
+        <div class="scroll"><table id="istArsivTable"></table></div>
+      </details>
+    </div>
   </section>
 
   <!-- TEŞHİR SKT -->
@@ -311,6 +318,10 @@
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/1ar3MA08KZPr0I4pipQUMP63fKWq3CoDXTM0h5HLxCxo/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
     <div class="card">
+      <h2>Fatura Takip</h2>
+      <a class="btn" href="https://drive.google.com/drive/folders/1FCFMaOADHM0Btf6unSZ8rsgI9iNU1LKdKCRx-HzhskKQ9fgO-m18iXFx7rjhwr5ENH5w55xr" target="_blank" style="text-decoration:none">Fatura ve irsaliye klasörünü aç</a>
+    </div>
+    <div class="card">
       <h2>Aylık Depo Kayıtları</h2>
       <div class="toolbar"><label class="muted">Ay:</label><input type="month" id="depoAy"></div>
       <p class="muted" id="depoOzet"></p>
@@ -329,11 +340,21 @@
     </div>
     <div class="card">
       <h2>Toptancılar</h2>
-      <div id="toptanList"></div>
+      <details><summary>Toptancı listesi</summary><div id="toptanList"></div></details>
     </div>
     <div class="card">
       <h2>Bugünkü Siparişler</h2>
+      <div class="toolbar"><input type="date" id="siparisTarih"></div>
+      <div id="gelecekList"></div>
+      <div id="gelmeyenBox"></div>
       <div id="siparisList"></div>
+    </div>
+    <div class="card">
+      <h2>Geçmiş Siparişler</h2>
+      <details><summary>Listeyi aç</summary>
+        <div class="toolbar" style="margin-top:10px"><input type="date" id="gecmisTarih"><select class="field" id="gecmisTop"></select></div>
+        <div id="gecmisList"></div>
+      </details>
     </div>
   </section>
 
@@ -349,7 +370,7 @@
     </div>
     <div class="card">
       <h2>Cihazlar</h2>
-      <div id="cihazList"></div>
+      <details><summary>Cihaz listesi</summary><div id="cihazList"></div></details>
     </div>
     <div class="card">
       <h2>Yeni Bakım Ekle</h2>
@@ -359,6 +380,7 @@
         <option value="1">Her 1 ayda</option><option value="3">Her 3 ayda</option>
         <option value="6" selected>Her 6 ayda</option><option value="12">Yılda 1</option>
       </select>
+      <p class="muted" style="margin:0 0 4px">Sonraki bakım tarihi</p>
       <input class="field" id="bTarih" type="date">
       <button id="bEkle">Ekle</button>
     </div>
@@ -445,7 +467,7 @@ const GUN_KISA = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
 const TUR_SIRA = ["Sabahçılar","Aracılar","Akşamcılar"];
 const TEKRAR = {yok:"Tekrar yok", gun:"Her gün", hafta:"Her hafta", ay:"Her ay"};
 const KEY = "kkb-ajanda-v6";
-const ALIAS = {"NAZ":"NAŞİDE"};
+const ALIAS = {"NAZ":"NAŞİDE","NAŞİDE":"NAZ"};
 const SABLONLAR = [
   "Molalarınızı vaktinde yapın.",
   "Bu haftanın çalışma programı iptal.",
@@ -631,7 +653,9 @@ function girisRender(){
   el.innerHTML =
     blok("Geç kalanlar", s.gec, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag yel">${x.dk} dk geç · ${esc(x.v)}${x.neden?" · "+esc(x.neden):""}</span></div>`) +
     blok("Giriş yapmayanlar", s.girmeyen, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag red">${esc(x.v)} · ${x.gun}</span></div>`) +
-    blok("Çıkış yapmayanlar (mesai bitti)", s.cikmayan, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag red">${esc(x.v)} · ${x.gun}</span></div>`);
+    blok("Çıkış yapmayanlar (mesai bitti)", s.cikmayan, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag red">${esc(x.v)} · ${x.gun}</span></div>`) +
+    (s.girmeyen.length ? uyariBtn("girisYok", "Giriş yapmayanlara WhatsApp'tan hatırlat") : "") +
+    (s.cikmayan.length ? uyariBtn("cikisYok", "Çıkış yapmayanlara WhatsApp'tan hatırlat") : "");
 }
 function satirlariAyir(line, d){
   const out=[]; let cur="", q=false;
@@ -734,8 +758,8 @@ function duzeltAc(kind,id){
       <select class="field" data-f="periyot">
         ${[1,3,6,12].map(p=>`<option value="${p}" ${Number(x.periyot)===p?"selected":""}>Her ${p} ayda</option>`).join("")}
       </select>
-      <input class="field" type="date" data-f="sonTarih" value="${esc(x.sonTarih)}">`,
-      v=>{ x.ad = v.ad || x.ad; x.periyot = Number(v.periyot)||x.periyot; x.sonTarih = v.sonTarih || x.sonTarih; kaydet(); renderAll(); toast("Güncellendi"); });
+      <input class="field" type="date" data-f="sonTarih" value="${esc(iso(bakimDurum(x).sonraki))}">`,
+      v=>{ x.ad = v.ad || x.ad; x.periyot = Number(v.periyot)||x.periyot; if (v.sonTarih) x.sonTarih = addMonths(v.sonTarih, -x.periyot); kaydet(); renderAll(); toast("Güncellendi"); });
   }
 }
 function erteleAc(kind,id){
@@ -800,51 +824,56 @@ document.addEventListener("pointerup", ()=>{
 });
 
 // ---- Bugün ----
+function ayKaydir(n){
+  const inp = document.getElementById("ozetAy");
+  const [y,m] = (inp.value || iso(new Date()).slice(0,7)).split("-").map(Number);
+  const d = new Date(y, m-1+n, 1);
+  inp.value = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  ozetTabloRender();
+}
 function ozetTabloRender(){
   const el = document.getElementById("ozetAyTablo"); if (!el) return;
   const ayEl = document.getElementById("ozetAy");
   if (!ayEl.value) ayEl.value = iso(new Date()).slice(0,7);
-  const ay = ayEl.value;
-  const bug = iso(new Date());
-  const satirlar = [];
-  const ekle = (bolum, gosterge, deger)=> satirlar.push([bolum, gosterge, deger]);
-
-  // Personel
+  const ay = ayEl.value, bug = iso(new Date());
   const pl = aylikTablo(ay);
-  const top = k => pl.reduce((s,x)=>s+(x[k]||0),0);
-  ekle("Personel", "Geç kalma (kişi-gün)", top("gec"));
-  ekle("Personel", "Geç kalma süresi (dk)", top("dk"));
-  ekle("Personel", "Giriş yok (gün)", top("yok"));
-  ekle("Personel", "İzin (gün)", top("izin"));
-  ekle("Personel", "Çalışılan saat", pl.reduce((s,x)=>s+x.saat,0).toFixed(1));
-  ekle("Personel", "Eksik saat", pl.reduce((s,x)=>s+x.eksik,0).toFixed(1));
-  ekle("Personel", "Taksi kullanılan gün (toplam)", top("tk"));
-
-  // Espresso
+  const gunler = programGunleri().filter(g=>g.tarih.startsWith(ay) && g.tarih<=bug && !g.izin);
+  const girisRows = db.giris.rows || [];
+  const erkenSay = ad => gunler.filter(g=>sameName(ad, g.ad)).filter(g=>{
+    const bas = new Date(g.tarih+"T00:00:00").getTime() + g.s.b*60000;
+    const gir = girisRows.filter(r=>sameName(g.ad, r.ad) && /BAŞLIYOR/.test(r.islem) && iso(new Date(r.t))===g.tarih).sort((a,b)=>a.t-b.t)[0];
+    return gir && bas - gir.t > 15*60000;
+  }).length;
+  const taksiGunleri = ad => [...new Set(girisRows.filter(r=>sameName(ad, r.ad) && up(r.taksi)==="EVET" && iso(new Date(r.t)).startsWith(ay) && iso(new Date(r.t)) <= bug).map(r=>iso(new Date(r.t))))].sort();
+  const depoCikis = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih.startsWith(ay) && r.tur==="ÇIKIŞ");
   const jr = ((db.jimbo && db.jimbo.rows) || []).filter(r=>r.tarih.startsWith(ay));
-  ekle("Espresso", "Kayıt", jr.length);
-  ekle("Espresso", "Teslim alındı", jr.filter(r=>r.teslim).length);
-  ekle("Espresso", "Sorunlu", jr.filter(r=>r.sorunlu).length);
-
-  // Depo
+  const rows = pl.slice().sort((a,b)=>a.ad.localeCompare(b.ad,"tr")).map(k=>{
+    const tg = taksiGunleri(k.ad);
+    return {ad:k.ad, gec:k.gec, dk:k.dk, erken:erkenSay(k.ad), yok:k.yok, izin:k.izin, saat:k.saat, eksik:k.eksik,
+      tk:tg.length, tgun: tg.map(d=>fmtTarih(d).slice(0,5)).join(", "),
+      depo: depoCikis.filter(r=>sameName(k.ad, r.personel)).length,
+      teslim: jr.filter(r=>r.teslim && sameName(k.ad, r.personel)).length};
+  });
+  const top = k => rows.reduce((s,r)=>s+(Number(r[k])||0),0);
+  el.innerHTML = "<tr><th>Personel</th><th>Geç kalma</th><th>Erken başlama</th><th>Giriş yok</th><th>İzin (gün)</th><th>Çalışılan (sa)</th><th>Eksik (sa)</th><th>Taksi (gün)</th><th>Taksi günleri</th><th>Depo çıkışı</th><th>Espresso teslim</th></tr>" +
+    (rows.length
+      ? rows.map(r=>`<tr><td class="l"><b>${esc(r.ad)}</b></td><td>${r.gec} kez · ${r.dk} dk</td><td>${r.erken}</td><td>${r.yok}</td><td>${r.izin}</td><td>${r.saat.toFixed(1)}</td><td>${r.eksik.toFixed(1)}</td><td>${r.tk}</td><td class="l wrap">${esc(r.tgun||"-")}</td><td>${r.depo}</td><td>${r.teslim}</td></tr>`).join("") +
+        `<tr><td class="l"><b>Toplam</b></td><td>${top("gec")} kez · ${top("dk")} dk</td><td>${top("erken")}</td><td>${top("yok")}</td><td>${top("izin")}</td><td>${top("saat").toFixed(1)}</td><td>${top("eksik").toFixed(1)}</td><td>${top("tk")}</td><td></td><td>${top("depo")}</td><td>${top("teslim")}</td></tr>`
+      : "<tr><td>Kayıt yok.</td></tr>");
   const dr = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih.startsWith(ay));
-  ekle("Depo", "Kayıt", dr.length);
-  ekle("Depo", "Giriş", dr.filter(r=>r.tur==="GİRİŞ").length);
-  ekle("Depo", "Çıkış", dr.filter(r=>r.tur==="ÇIKIŞ").length);
-
-  // Teşhir dolabı (SKT)
   const sr = ((db.skt && db.skt.rows) || []).filter(r=>String(r.kayit||"").startsWith(ay));
-  ekle("Teşhir Dolabı", "Kayıtlı ürün", sr.length);
-  ekle("Teşhir Dolabı", "Kayıt yapılan gün", new Set(sr.map(r=>r.kayit)).size);
-
-  // Toptan siparişleri (tarih gg.aa.yyyy)
   const sp = (db.siparis || []).filter(s=>{ const p = String(s.tarih||"").split("."); return p.length===3 && p[2]+"-"+p[1]===ay; });
-  ekle("Toptan", "Sipariş", sp.length);
-  ekle("Toptan", "Sipariş verilen toptancı", new Set(sp.map(s=>s.tId)).size);
-
-  el.innerHTML = "<tr><th>Bölüm</th><th>Gösterge</th><th>Değer</th></tr>" +
-    satirlar.map(([b,g,d])=>`<tr><td class="l"><b>${esc(b)}</b></td><td class="l">${esc(g)}</td><td>${esc(String(d))}</td></tr>`).join("");
+  const genel = [
+    ["Espresso","Kontrol kaydı", jr.length], ["Espresso","Teslim alındı", jr.filter(r=>r.teslim).length], ["Espresso","Sorunlu", jr.filter(r=>r.sorunlu).length],
+    ["Depo","Giriş", dr.filter(r=>r.tur==="GİRİŞ").length], ["Depo","Çıkış", dr.filter(r=>r.tur==="ÇIKIŞ").length],
+    ["Teşhir Dolabı","Kaydedilen ürün", sr.length], ["Teşhir Dolabı","Kayıt yapılan gün", new Set(sr.map(r=>r.kayit)).size],
+    ["Toptan","Sipariş", sp.length], ["Toptan","Sipariş verilen toptancı", new Set(sp.map(s=>s.tId)).size]
+  ];
+  document.getElementById("ozetGenelTablo").innerHTML = "<tr><th>Bölüm</th><th>Gösterge</th><th>Değer</th></tr>" +
+    genel.map(([b,g,d])=>`<tr><td class="l"><b>${esc(b)}</b></td><td class="l">${esc(g)}</td><td>${d}</td></tr>`).join("");
 }
+document.getElementById("ozetOnce").onclick = ()=>ayKaydir(-1);
+document.getElementById("ozetSonra").onclick = ()=>ayKaydir(1);
 function bugunRender(){
   ozetTabloRender();
   document.getElementById("gunAdi").textContent = GUN_AD[bugunIdx];
@@ -865,9 +894,10 @@ function bugunRender(){
     ? izin.map(x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag ${morMi(x.v)?"mor":"red"}">${morMi(x.v)?"İzinli (-)":"Haftalık izin (OFF)"}</span></div>`).join("")
     : '<div class="muted">Bugün izinli personel yok.</div>';
   const bk = db.bakim.map(b=>({...b, d:bakimDurum(b)})).sort((a,b)=>a.d.gun-b.d.gun);
-  document.getElementById("bakimOzet").innerHTML = bk.length
-    ? bk.map(b=>`<div class="row"><span>${esc(b.ad)}</span><span class="tag ${b.d.sinif}">${b.d.etiket}</span></div>`).join("")
-    : '<div class="muted">Bakım kaydı yok.</div>';
+  const yakinBk = bk.filter(b=>b.d.gun <= 30);
+  document.getElementById("bakimOzet").innerHTML = yakinBk.length
+    ? yakinBk.map(b=>`<div class="row"><span>${esc(b.ad)}</span><span class="tag ${b.d.sinif}">${b.d.etiket}</span></div>`).join("") + uyariBtn("bakim", "Uyarıyı WhatsApp'a hazırla")
+    : '<div class="muted">30 gün içinde bakım yok.</div>';
 }
 function yaklasanRender(){
   const now = new Date(), lim = now.getTime() + 86400000;
@@ -992,6 +1022,18 @@ function eslesPersonel(ad){
   const bulunan = names.find(n => up(n).split(" ")[0] === hedef.split(" ")[0]);
   return bulunan || ad;
 }
+function istArsivRender(){
+  const sel = document.getElementById("istArsivSec"); if (!sel) return;
+  const arsiv = db.istArsiv || [];
+  const secili = sel.value;
+  sel.innerHTML = arsiv.length ? arsiv.map((a,i)=>`<option value="${i}">${esc(a.etiket)}</option>`).join("") : '<option value="">Arşiv boş</option>';
+  if (secili && arsiv[+secili]) sel.value = secili;
+  const a = arsiv[+sel.value];
+  document.getElementById("istArsivTable").innerHTML = a
+    ? "<tr><th>Personel</th><th>İstasyon</th><th>Molalar</th></tr>" + a.rows.map(r=>`<tr><td class="l"><b>${esc(r.ad)}</b></td><td>${esc(r.istasyon)}</td><td class="l">${r.molalar.map(m=>m.join(" - ")).join(", ")}</td></tr>`).join("")
+    : "";
+}
+document.getElementById("istArsivSec").addEventListener("change", istArsivRender);
 function istasyonRender(){
   const now = new Date(), nm = now.getHours()*60 + now.getMinutes();
   document.getElementById("saat").textContent = "Şu an " + hm(nm);
@@ -1039,6 +1081,11 @@ function istasyonYukle(text, sessiz){
     rows.push({ad, istasyon:c[1], molalar});
   });
   if (!rows.length){ if (!sessiz) toast("Tablo okunamadı. Sütunları kontrol et."); return false; }
+  if (db.istasyon && db.istasyon.rows && db.istasyon.rows.length && JSON.stringify(db.istasyon.rows) !== JSON.stringify(rows)){
+    db.istArsiv = db.istArsiv || [];
+    db.istArsiv.unshift({etiket: (db.istasyon.tarih || "Tarihsiz") + " · arşivlendi " + fmtDT(Date.now()), rows: db.istasyon.rows});
+    db.istArsiv = db.istArsiv.slice(0, 60);
+  }
   db.istasyon = {tarih: tarih || bugunStr(), rows};
   kaydet(); renderAll(); if (!sessiz) toast("İstasyon tablosu güncellendi"); return true;
 }
@@ -1068,11 +1115,37 @@ function toptanRender(){
         </div>
       </div>`).join("")
     : '<div class="muted">Henüz toptancı eklenmedi.</div>';
-  const son = db.siparis.filter(s=>s.tarih===bugunStr()).slice().reverse();
-  document.getElementById("siparisList").innerHTML = son.length
-    ? son.map(s=>{ const t = db.toptanci.find(x=>x.id===s.tId); return `<div class="row"><div><b>${esc(t?t.ad:"Silinmiş toptancı")}</b><div class="muted">${esc(s.metin.slice(0,80))}</div></div><span class="muted">${esc(s.tarih)}</span><button class="ghost" data-sip="sil" data-id="${esc(s.id)}">Sil</button></div>`; }).join("")
-    : '<div class="muted">Bugün sipariş yok.</div>';
+  const st = document.getElementById("siparisTarih");
+  if (!st.value) st.value = iso(new Date());
+  const gt = document.getElementById("gecmisTarih");
+  const gsel = document.getElementById("gecmisTop");
+  const gtopSec = gsel.value;
+  gsel.innerHTML = '<option value="">Tüm toptancılar</option>' + db.toptanci.map(t=>`<option value="${esc(t.id)}">${esc(t.ad)}</option>`).join("");
+  gsel.value = gtopSec;
+  const etiket = {geldi:'<span class="tag grn">Geldi</span>', gelmedi:'<span class="tag red">Gelmedi</span>', bekleniyor:'<span class="tag yel">Bekleniyor</span>'};
+  const gel = gelenDurumlari();
+  document.getElementById("gelecekList").innerHTML = gel.length
+    ? '<div class="grp">Bugün gelmesi gerekenler</div>' + gel.map(g=>{
+        const aciklama = g.siparisler.length ? esc(g.siparisler.map(s=>s.metin).join(" / ").slice(0,120)) : "Sevkiyat günü";
+        const buton = `<button class="ghost" data-gel="${esc(g.key)}" data-deger="${g.durum==="geldi" ? "gelmedi" : "geldi"}">${g.durum==="geldi" ? "Gelmedi yap" : "Geldi yap"}</button>` + (g.elle ? `<button class="ghost" data-gel="${esc(g.key)}" data-deger="">Otomatiğe dön</button>` : "");
+        return `<div class="row"><div><b>${esc(g.t.ad)}</b><div class="muted">${aciklama}${g.elle ? " · elle işaretlendi" : ""}</div></div><span>${etiket[g.durum]}</span>${buton}</div>`;
+      }).join("")
+    : '<div class="muted">Bugün gelmesi beklenen sipariş yok.</div>';
+  const gelmeyen = gel.filter(g=>g.durum==="gelmedi").length;
+  document.getElementById("gelmeyenBox").innerHTML = gelmeyen ? uyariBtn("gelmedi", "Gelmeyenleri WhatsApp'a gönder") : "";
+  const gunSiparis = db.siparis.filter(s=>s.tarih===fmtTarih(st.value)).slice().reverse();
+  document.getElementById("siparisList").innerHTML = gunSiparis.length
+    ? gunSiparis.map(siparisSatir).join("") : '<div class="muted">Bu tarihte sipariş yok.</div>';
+  const gecmis = db.siparis.filter(s=>(!gt.value || s.tarih===fmtTarih(gt.value)) && (!gtopSec || String(s.tId)===gtopSec)).slice().reverse();
+  let son = "", gh = "";
+  gecmis.forEach(s=>{ if (s.tarih!==son){ son = s.tarih; gh += `<div class="grp">${esc(s.tarih)}</div>`; } gh += siparisSatir(s); });
+  document.getElementById("gecmisList").innerHTML = gecmis.length ? gh : '<div class="muted">Kayıt yok.</div>';
 }
+function siparisSatir(s){
+  const t = db.toptanci.find(x=>x.id===s.tId);
+  return `<div class="row"><div><b>${esc(t?t.ad:"Silinmiş toptancı")}</b><div class="muted">${esc(s.metin.slice(0,120))}</div></div><span class="muted">${esc(s.tarih)}</span><button class="ghost" data-sip="sil" data-id="${esc(s.id)}">Sil</button></div>`;
+}
+["siparisTarih","gecmisTarih","gecmisTop"].forEach(id=>document.getElementById(id).addEventListener("change", toptanRender));
 document.getElementById("tEkle").onclick = ()=>{
   const ad = document.getElementById("tAd").value.trim();
   if (!ad) return toast("Toptancı adı yaz");
@@ -1110,6 +1183,7 @@ document.addEventListener("click", e=>{
 });
 
 // ---- Bakım ----
+function addMonths(s, n){ const d = new Date(s+"T00:00:00"); d.setMonth(d.getMonth()+Number(n)); return iso(d); }
 function bakimDurum(b){
   const son = new Date(b.sonTarih+"T00:00:00");
   const sonraki = new Date(son); sonraki.setMonth(sonraki.getMonth()+Number(b.periyot));
@@ -1144,7 +1218,7 @@ document.getElementById("bEkle").onclick = ()=>{
   const cih = db.cihaz.find(x=>String(x.id)===document.getElementById("bCihaz").value);
   const ad = document.getElementById("bAd").value.trim() || (cih ? cihazEtiket(cih) : "");
   if (!ad) return toast("Ekipman seç ya da adını yaz");
-  db.bakim.push({id:uid(), ad, periyot:+document.getElementById("bPeriyot").value, sonTarih: document.getElementById("bTarih").value || iso(bugun), cihazId: cih ? cih.id : ""});
+  db.bakim.push({id:uid(), ad, periyot:+document.getElementById("bPeriyot").value, sonTarih: document.getElementById("bTarih").value ? addMonths(document.getElementById("bTarih").value, -Number(document.getElementById("bPeriyot").value)) : iso(bugun), cihazId: cih ? cih.id : ""});
   document.getElementById("bAd").value = "";
   document.getElementById("bCihaz").value = "";
   kaydet(); renderAll(); toast("Bakım eklendi");
@@ -1366,25 +1440,89 @@ function sktRender(){
     const o = rows.filter(r=>r.kayit===iso(now));
     pastaEl.innerHTML = o.length
       ? `<div class="durum ok"><span class="ikon">✓</span><div><b>Pasta çıkarıldı</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))}</div></div></div>`
-      : '<div class="durum no"><span class="ikon">✗</span><div><b>Pasta çıkarılmadı</b></div></div>' +
-        `<div class="toolbar" style="margin-top:8px"><button class="ghost" id="sktUyariBtn">Uyarıyı WhatsApp'a hazırla</button></div>`;
+      : '<div class="durum no"><span class="ikon">✗</span><div><b>Bugün pasta çıkarılmadı</b></div></div>';
+    pastaEl.innerHTML += uyariBtn("skt", "SKT dolanları WhatsApp'a gönder");
   }
 }
 function sktUyariMetni(){
-  const now = new Date(), nowMs = now.getTime();
-  const yakin = ((db.skt && db.skt.rows) || []).map(r=>({...r, ms: new Date(r.skt+"T"+(r.saat||"01:00")+":00").getTime()}))
-    .filter(r=>r.ms <= nowMs + 86400000 && r.ms >= nowMs - 7*86400000)
-    .sort((a,b)=>a.ms-b.ms);
-  let m = "⚠️ Teşhir dolabı SKT uyarısı · " + bugunStr() + " " + saatMs(nowMs) + "\n";
-  m += "Bugün pasta çıkarılmadı.\n";
-  if (yakin.length){
-    m += "\nSKT'si dolmuş ya da 24 saat içinde dolacak ürünler:\n";
-    m += yakin.map(r=>`- ${r.urun} · ${r.adet} · SKT: ${fmtTarih(r.skt)} ${r.saat||""}${r.ms <= nowMs ? " (doldu)" : ""}`).join("\n");
-  }
-  return m + "\n\nLütfen kontrol edip kaydı girin.";
+  const bug = iso(new Date());
+  const liste = ((db.skt && db.skt.rows) || []).filter(r=>r.skt===bug);
+  const m = "SKT'si bugün dolan ürünler · " + bugunStr() + "\n";
+  if (!liste.length) return m + "Bugün SKT'si dolan ürün yok.";
+  return m + liste.map(r=>`- ${r.urun} · ${r.adet}`).join("\n") + "\n\nArkadaşlar bugün teşhirde SKT'si dolanları kontrol edin, listedeki ürünler var mı yok mu tespit edip haber verin lütfen.";
 }
+const uyariBtn = (tur, etiket)=>`<div class="toolbar" style="margin-top:8px"><button class="ghost" data-wa="${tur}">${etiket}</button></div>`;
+function espressoUyariMetni(){
+  const bug = iso(new Date());
+  const sorunlu = ((db.jimbo && db.jimbo.rows) || []).filter(r=>r.tarih===bug && r.sorunlu).sort((a,b)=>a.t-b.t);
+  let m = "⚠️ Espresso makinesi sorunu · " + bugunStr() + "\n";
+  m += sorunlu.map(r=>`- Jimbo ${r.makine} · ${r.personel} · ${r.saat} · ${r.sorunMetni || "Sorun bildirildi"}`).join("\n");
+  return m + "\n\nLütfen kontrol edin.";
+}
+function depoUyariMetni(){
+  return "⚠️ Depo uyarısı · " + bugunStr() + " " + saatMs(Date.now()) + "\nBugün depodan çıkış girişi yok.\n\nLütfen kontrol edin.";
+}
+function bakimUyariMetni(){
+  const bk = db.bakim.map(b=>({...b, d:bakimDurum(b)})).filter(b=>b.d.gun <= 30).sort((a,b)=>a.d.gun-b.d.gun);
+  return "⚠️ Bakım uyarısı · " + bugunStr() + "\n" + bk.map(b=>`- ${b.ad} · ${b.d.etiket}`).join("\n") + "\n\nLütfen bakımların planlamasını yapın.";
+}
+function girisYokMetni(){
+  const s = girisDurum();
+  const l = s ? s.girmeyen : [];
+  return "⚠️ Vardiya girişi · " + bugunStr() + "\n" + l.map(x=>`- ${x.ad} · ${x.v}`).join("\n") + "\n\nArkadaşlar işe girişlerinizi yapmamışsınız, lütfen giriş yapın.";
+}
+function cikisYokMetni(){
+  const s = girisDurum();
+  const l = s ? s.cikmayan : [];
+  return "⚠️ Vardiya çıkışı · " + bugunStr() + "\n" + l.map(x=>`- ${x.ad} · ${x.v}`).join("\n") + "\n\nArkadaşlar işten çıkış yapmamışsınız, lütfen çıkış yapın.";
+}
+function teslimEksikler(){
+  const bug = iso(new Date());
+  const {cal} = bugunListeleri();
+  const nm = new Date().getHours()*60 + new Date().getMinutes();
+  const liste = [];
+  [["SABAH","Sabah","Sabahçılar"],["AKŞAM","Akşam","Akşamcılar"]].forEach(([v, etk, tur])=>{
+    const grup = cal.filter(x=>x.tur===tur);
+    if (!grup.length) return;
+    if (nm < Math.min(...grup.map(x=>x.b)) + 30) return;
+    [1,2].forEach(m=>{ if (!jimboDurum(v, bug, String(m)).teslim) liste.push(`Jimbo ${m} · ${etk} vardiyası`); });
+  });
+  return liste;
+}
+function teslimMetni(){
+  return "⚠️ Espresso makineleri · " + bugunStr() + "\nTeslim alınmayan makineler:\n" + teslimEksikler().map(x=>"- "+x).join("\n") + "\n\nArkadaşlar makineleri teslim almamışsınız, lütfen teslim alın.";
+}
+const SIPARIS_KONTROL_DK = 13*60 + 30;
+// Bugün gelmesi beklenen toptancılar: sevkiyat günü olanlar + bugün sipariş verilenler.
+// Depo adıyla eşleştirme yok. Bugün hiç mal girişi yoksa 13:30'dan sonra hepsi "gelmedi" olur.
+// Diğer durumlarda kişi elle "geldi" ya da "gelmedi" olarak işaretler.
+function gelenDurumlari(){
+  const bug = iso(new Date());
+  const bugS = bugunStr();
+  db.gelenManuel = db.gelenManuel || {};
+  const girisVar = ((db.depo && db.depo.rows) || []).some(r=>r.tarih===bug && r.tur==="GİRİŞ");
+  const nm = new Date().getHours()*60 + new Date().getMinutes();
+  const bugunSiparis = db.siparis.filter(s=>s.tarih===bugS);
+  const beklenen = db.toptanci.filter(t=>bugunSevkiyat(t.gunler) || bugunSiparis.some(s=>s.tId===t.id));
+  return beklenen.map(t=>{
+    const key = t.id+"|"+bug;
+    const e0 = db.gelenManuel[key];
+    const elle = (e0==="geldi" || e0==="gelmedi") ? e0 : null;
+    const otomatik = (!girisVar && nm >= SIPARIS_KONTROL_DK) ? "gelmedi" : "bekleniyor";
+    return {t, key, durum: elle || otomatik, elle: !!elle, siparisler: bugunSiparis.filter(s=>s.tId===t.id)};
+  });
+}
+function gelmediMetni(){
+  const g = gelenDurumlari().filter(x=>x.durum==="gelmedi");
+  const satirlar = g.map(x=>`- ${x.t.ad}${x.siparisler.length ? " · " + x.siparisler.map(s=>s.metin).join(" / ") : " · sevkiyat günü"}`).join("\n");
+  return "⚠️ Bugün gelmesi gereken siparişler depoya girmedi · " + bugunStr() + " " + saatMs(Date.now()) + "\n" + satirlar + "\n\nBu siparişler gelmedi mi, kontrol edip haber verir misiniz?";
+}
+const UYARI_METIN = {skt: sktUyariMetni, espresso: espressoUyariMetni, depo: depoUyariMetni, bakim: bakimUyariMetni, girisYok: girisYokMetni, cikisYok: cikisYokMetni, teslim: teslimMetni, gelmedi: gelmediMetni};
 document.addEventListener("click", e=>{
-  if (e.target.closest("#sktUyariBtn")) waGonder(sktUyariMetni());
+  const b = e.target.closest("[data-wa]");
+  if (b && UYARI_METIN[b.dataset.wa]) waGonder(UYARI_METIN[b.dataset.wa]());
+  const g = e.target.closest("[data-gel]");
+  if (g){ db.gelenManuel = db.gelenManuel || {}; const d = g.dataset.deger; if (d) db.gelenManuel[g.dataset.gel] = d; else delete db.gelenManuel[g.dataset.gel]; kaydet(); renderAll(); }
 });
 // İstasyon: haftanın her günü ayrı sayfa; bugünün tarihini taşıyan sayfayı bul
 async function istasyonMetniGetir(){
@@ -1627,7 +1765,8 @@ function jimboRender(){
       if (d.sorun) return `<div class="durum no"><span class="ikon">✗</span><div><b>${isim} teslim alındı · ${saatMs(d.teslim.t)}</b><div class="muted">Sorun var, personel bildirdi: ${esc(d.sorun.sorunMetni || "")}</div></div></div>`;
       return `<div class="durum ok"><span class="ikon">✓</span><div><b>${isim} teslim alındı · ${saatMs(d.teslim.t)}</b><div class="muted">Sorunsuz çalışıyor · ${esc(d.teslim.personel)}</div></div></div>`;
     }).join("");
-  el.innerHTML = blok("Sabahçı personel", "SABAH", sabahlar) + blok("Akşamcı personel", "AKŞAM", aksamlar);
+  const bugSorun = ((db.jimbo && db.jimbo.rows) || []).some(r=>r.tarih===bug && r.sorunlu);
+  el.innerHTML = blok("Sabahçı personel", "SABAH", sabahlar) + blok("Akşamcı personel", "AKŞAM", aksamlar) + (bugSorun ? uyariBtn("espresso", "Sorunu WhatsApp'a hazırla") : "") + (teslimEksikler().length ? uyariBtn("teslim", "Teslim al") : "");
   const jt = document.getElementById("jimboTabBugun"); if (jt) jt.innerHTML = el.innerHTML;
 }
 function jimboTabloRender(){
@@ -1815,7 +1954,7 @@ function depoRender(){
   let h = '<div class="grp">Giriş</div>' + (giris.length ? giris.map(satir).join("") : '<div class="muted">Yok</div>');
   h += '<div class="grp">Çıkış</div>' + (cikis.length ? cikis.map(satir).join("") : '<div class="muted">Yok</div>');
   if (!cikis.length && new Date().getHours() >= DEPO_UYARI_SAAT){
-    h = `<div class="durum no"><span class="ikon">✗</span><div><b>Bugün depodan çıkış yok</b></div></div>` + h;
+    h = `<div class="durum no"><span class="ikon">✗</span><div><b>Bugün depodan çıkış yok</b></div></div>` + uyariBtn("depo", "Uyarıyı WhatsApp'a hazırla") + h;
     if (depoBildirildi !== bug){ depoBildirildi = bug; bildir("Depo", "Bugün depodan çıkış yok"); }
   }
   el.innerHTML = h;
@@ -1842,7 +1981,7 @@ document.getElementById("depoYukle").onclick = ()=>{
 };
 
 // ---- Başlat ----
-function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); vardiyaRender(); jimboRender(); jimboTabloRender(); cihazRender(); depoRender(); depoTabloRender(); tabloKur(); yedekHatirlatRender(); }
+function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); vardiyaRender(); jimboRender(); jimboTabloRender(); cihazRender(); depoRender(); depoTabloRender(); tabloKur(); yedekHatirlatRender(); istArsivRender(); }
 renderAll();
 havaCek();
 alarmKontrol();

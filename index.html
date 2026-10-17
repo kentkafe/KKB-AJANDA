@@ -1218,30 +1218,42 @@ function kapanisMeydanci(gunIso, kisiler){
   const r = (rows||[]).find(r=>/MEYDAN/.test(up(r.istasyon)) && kisiler.some(ad=>sameName(ad, r.ad)));
   return r ? kisiler.find(ad=>sameName(ad, r.ad)) : null;
 }
-function kapanisAtama(gunIso, kisiler, kalabalik, meydanci){
+const KAPANIS_SIRA = ["Mal çekme","Temizlik yapma","Süpürge paspas",KAPANIS_EK,"Serviste kalma"];
+function kapanisSlotSayi(g, kalabalik){
+  if (g===KAPANIS_EK) return kalabalik ? 2 : 1;
+  return (KAPANIS_GOREVLER.find(x=>x[0]===g)||[0,0])[1];
+}
+// Atama: önce elle seçilenler, sonra meydan, en son otomatik dağılım (az yapan kişiye öncelik, dünkü görev tekrarlanmaz).
+function kapanisAtama(gunIso, kisiler, kalabalik, meydanci, manuel){
   const havuz = kisiler.filter(ad=>!kapanisBaris(ad) && ad!==meydanci);
+  const mn = manuel || {};
   const sayac = {};
   Object.entries(db.kapanis.gunler).forEach(([d,v])=>{
     if (d >= gunIso) return;
-    Object.entries(v.atama||{}).forEach(([g,list])=>list.forEach(ad=>{ const k = ad+"|"+g; sayac[k] = (sayac[k]||0)+1; }));
+    Object.entries(v.atama||{}).forEach(([g,list])=>list.forEach(ad=>{ if (!ad) return; const k = ad+"|"+g; sayac[k] = (sayac[k]||0)+1; }));
   });
   const toplam = ad => Object.keys(sayac).filter(k=>k.startsWith(ad+"|")).reduce((t,k)=>t+sayac[k],0);
-  const kullanilan = new Set(), atama = {};
-  // Dünkü görevi bugün tekrar almasın diye: önceki günün atamaları
   const dunIso = iso(new Date(new Date(gunIso+"T00:00:00").getTime() - 86400000));
   const dun = db.kapanis.gunler[dunIso];
-  const dunAyniGorev = (ad, g) => !!(dun && (dun.atama[g]||[]).includes(ad)) ? 1 : 0;
-  const gorevler = KAPANIS_GOREVLER.slice(0,3).concat(kalabalik ? [[KAPANIS_EK,1]] : []).concat(KAPANIS_GOREVLER.slice(3));
-  gorevler.forEach(([g,n])=>{
-    atama[g] = [];
-    for (let i=0;i<n;i++){
-      const aday = havuz.filter(ad=>!kullanilan.has(ad)).sort((a,b)=>
-        ((sayac[a+"|"+g]||0)-(sayac[b+"|"+g]||0)) || (dunAyniGorev(a,g)-dunAyniGorev(b,g)) || (toplam(a)-toplam(b)) || a.localeCompare(b,"tr"))[0];
-      if (!aday) break;
-      atama[g].push(aday); kullanilan.add(aday);
-    }
+  const dunAyniGorev = (ad, g) => (dun && (dun.atama[g]||[]).includes(ad)) ? 1 : 0;
+  const atama = {};
+  KAPANIS_SIRA.forEach(g=>{ atama[g] = Array(kapanisSlotSayi(g, kalabalik)).fill(null); });
+  atama[KAPANIS_EK][0] = meydanci || null;
+  Object.entries(mn).forEach(([g,list])=>{
+    if (!atama[g]) return;
+    (list||[]).forEach((ad,i)=>{
+      if (ad && i < atama[g].length && kisiler.includes(ad) && !Object.values(atama).some(l=>l.includes(ad))) atama[g][i] = ad;
+    });
   });
-  atama[KAPANIS_EK] = [...(meydanci ? [meydanci] : []), ...(atama[KAPANIS_EK]||[])];
+  const kullanilan = new Set(Object.values(atama).flat().filter(Boolean));
+  KAPANIS_SIRA.forEach(g=>{
+    atama[g].forEach((ad,i)=>{
+      if (ad || (g===KAPANIS_EK && i===0)) return;
+      const aday = havuz.filter(x=>!kullanilan.has(x)).sort((a,b)=>
+        ((sayac[a+"|"+g]||0)-(sayac[b+"|"+g]||0)) || (dunAyniGorev(a,g)-dunAyniGorev(b,g)) || (toplam(a)-toplam(b)) || a.localeCompare(b,"tr"))[0];
+      if (aday){ atama[g][i] = aday; kullanilan.add(aday); }
+    });
+  });
   return atama;
 }
 function kapanisGun(gunIso){
@@ -1249,37 +1261,55 @@ function kapanisGun(gunIso){
   if (kisiler === null) return null;
   db.kapanis = db.kapanis || {gunler:{}};
   const kay = db.kapanis.gunler[gunIso];
-  const md = kapanisMeydanci(gunIso, kisiler);
-  if (kay && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler) && (kay.meydanci||null)===(md||null)) return kay;
-  const kalabalik = !!(kay && kay.kalabalik);
-  const yeni = {kisiler, kalabalik, meydanci: md||null, atama: kapanisAtama(gunIso, kisiler, kalabalik, md)};
+  const md = kapanisMeydanci(gunIso, kisiler) || null;
+  if (kay && kay.v===2 && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler) && (kay.meydanci||null)===md) return kay;
+  const kalabalik = !!(kay && kay.kalabalik), manuel = kay ? kay.manuel : undefined;
+  const yeni = {v:2, kisiler, kalabalik, meydanci: md, manuel, atama: kapanisAtama(gunIso, kisiler, kalabalik, md, manuel)};
   if (!kay || JSON.stringify(kay)!==JSON.stringify(yeni)){ db.kapanis.gunler[gunIso] = yeni; kaydet(); }
   return db.kapanis.gunler[gunIso];
 }
 function kapanisKalabalik(gunIso){
   const kay = kapanisGun(gunIso); if (!kay) return;
   kay.kalabalik = !kay.kalabalik;
-  kay.atama = kapanisAtama(gunIso, kay.kisiler, kay.kalabalik, kay.meydanci);
+  kay.atama = kapanisAtama(gunIso, kay.kisiler, kay.kalabalik, kay.meydanci, kay.manuel);
   kaydet(); renderAll();
 }
+function kapanisElSec(gunIso, g, i, deger){
+  const kay = kapanisGun(gunIso); if (!kay) return;
+  kay.manuel = kay.manuel || {};
+  kay.manuel[g] = kay.manuel[g] || Array(kapanisSlotSayi(g, true)).fill(null);
+  kay.manuel[g][i] = deger || null;
+  kay.atama = kapanisAtama(gunIso, kay.kisiler, kay.kalabalik, kay.meydanci, kay.manuel);
+  kaydet(); renderAll();
+}
+function kapanisSelect(gunIso, g, i, deger, kisiler){
+  const opts = '<option value="">— Otomatik —</option>' + kisiler.filter(ad=>!kapanisBaris(ad)).map(ad=>`<option value="${esc(ad)}"${ad===deger?" selected":""}>${esc(ad)}</option>`).join("");
+  return `<select class="field" style="margin:2px 0" data-kap-gun="${gunIso}" data-kap-g="${esc(g)}" data-kap-i="${i}">${opts}</select>`;
+}
+document.addEventListener("change", e=>{
+  const t = e.target;
+  if (t && t.dataset && t.dataset.kapG !== undefined) kapanisElSec(t.dataset.kapGun, t.dataset.kapG, +t.dataset.kapI, t.value);
+});
 function kapanisHaftaTumu(){
   return Object.keys(db.haftalar).map(k=>({k, a:parseAralik(k)})).filter(x=>x.a).sort((x,y)=>x.a.s-y.a.s);
 }
 function kapanisRender(){
   const haftalar = kapanisHaftaTumu();
-  // Tüm haftalar sırayla hesaplanır: yeni hafta eski haftaların dağılımına bakarak yapılır
   haftalar.forEach(x=>{ for (let i=0;i<7;i++) kapanisGun(iso(new Date(x.a.s.getTime()+i*86400000))); });
-  const bugunEl = document.getElementById("kapanisBugun");
-  const bugun = kapanisGun(iso(new Date()));
-  if (bugunEl){
-    if (!bugun) bugunEl.innerHTML = '<tr><td class="muted">Bugün için program yok.</td></tr>';
+  const bugIso = iso(new Date());
+  const bugun = kapanisGun(bugIso);
+  const bEl = document.getElementById("kapanisBugun");
+  if (bEl){
+    if (!bugun) bEl.innerHTML = '<tr><td class="muted">Bugün için program yok.</td></tr>';
     else {
-      const gorev = {};
-      Object.entries(bugun.atama).forEach(([g,list])=>list.forEach(ad=>{ (gorev[ad] = gorev[ad]||[]).push(g); }));
-      const isimler = bugun.kisiler.filter(ad=>!kapanisBaris(ad));
-      bugunEl.innerHTML = "<tr><th>Personel</th><th>Görev</th></tr>" + (isimler.length
-        ? isimler.map(ad=>`<tr><td class="l"><b>${esc(ad)}</b></td><td>${esc((gorev[ad]||[]).join(", ") || "—")}</td></tr>`).join("")
-        : '<tr><td>Kapanış personeli yok.</td></tr>');
+      let h = "<tr><th>Görev</th><th>Kişi</th></tr>";
+      KAPANIS_SIRA.forEach(g=>{
+        for (let i=0;i<kapanisSlotSayi(g, bugun.kalabalik);i++){
+          const etiket = g===KAPANIS_EK ? (i===0 ? "Meydana yardım" : "Meydana yardım (ek kişi)") : g;
+          h += `<tr><td class="l"><b>${esc(etiket)}</b></td><td>${kapanisSelect(bugIso, g, i, (bugun.atama[g]||[])[i]||"", bugun.kisiler)}</td></tr>`;
+        }
+      });
+      bEl.innerHTML = h;
     }
   }
   const sec = document.getElementById("kapanisHaftaSec");
@@ -1290,11 +1320,11 @@ function kapanisRender(){
   sec.value = haftalar.some(x=>x.k===mevcut) ? mevcut : (haftalar.length ? haftalar[haftalar.length-1].k : "");
   const sel = haftalar.find(x=>x.k===sec.value);
   if (!sel){ haftaEl.innerHTML = '<tr><td>Haftalık program yüklenmedi.</td></tr>'; return; }
-  let h = "<tr><th>Gün</th><th>Mal çekme</th><th>Serviste kalma</th><th>Temizlik</th><th>Süpürge paspas</th><th>Meydana yardım</th><th></th></tr>";
+  let h = "<tr><th>Gün</th><th>Mal çekme</th><th>Temizlik</th><th>Süpürge paspas</th><th>Serviste kalma</th><th>Meydana yardım</th><th></th></tr>";
   kapanisHaftaGunleri(sel.a).forEach(gun=>{
     const gi = iso(gun), kay = kapanisGun(gi);
-    const hucre = g => (kay && (kay.atama[g]||[]).length) ? esc(kay.atama[g].join(", ")) : "—";
-    h += `<tr><td class="l"><b>${GUN_AD[(gun.getDay()+6)%7]}</b><br><span class="muted">${fmtTarih(gi)}</span></td><td>${hucre("Mal çekme")}</td><td>${hucre("Serviste kalma")}</td><td>${hucre("Temizlik yapma")}</td><td>${hucre("Süpürge paspas")}</td><td>${hucre(KAPANIS_EK)}</td><td>${kay ? `<button class="ghost" data-kal="${gi}">${kay.kalabalik ? "Kalabalık ✓" : "Kalabalık"}</button>` : ""}</td></tr>`;
+    const hucre = g => kay ? Array.from({length: kapanisSlotSayi(g, kay.kalabalik)}, (_,i)=>kapanisSelect(gi, g, i, (kay.atama[g]||[])[i]||"", kay.kisiler)).join("") : "—";
+    h += `<tr><td class="l"><b>${GUN_AD[(gun.getDay()+6)%7]}</b><br><span class="muted">${fmtTarih(gi)}</span></td><td>${hucre("Mal çekme")}</td><td>${hucre("Temizlik yapma")}</td><td>${hucre("Süpürge paspas")}</td><td>${hucre("Serviste kalma")}</td><td>${hucre(KAPANIS_EK)}</td><td>${kay ? `<button class="ghost" data-kal="${gi}">${kay.kalabalik ? "Kalabalık ✓" : "Kalabalık"}</button>` : ""}</td></tr>`;
   });
   haftaEl.innerHTML = h;
 }
@@ -1676,7 +1706,7 @@ function kapanisMetni(){
   const bugun = kapanisGun(iso(new Date()));
   if (!bugun) return "*Kapanış görevleri* · " + bugunStr() + "\n\nBugün kapanış personeli yok.";
   const gorev = {};
-  Object.entries(bugun.atama).forEach(([g,list])=>list.forEach(ad=>{ (gorev[ad] = gorev[ad]||[]).push(g); }));
+  Object.entries(bugun.atama).forEach(([g,list])=>list.forEach(ad=>{ if (!ad) return; (gorev[ad] = gorev[ad]||[]).push(g); }));
   const satirlar = bugun.kisiler.filter(ad=>!kapanisBaris(ad)).map(ad=>{
     const gorevler = (gorev[ad]||[]).filter(g=>bugun.kalabalik || g!==KAPANIS_EK);
     return gorevler.length ? "• " + ad + " - " + gorevler.join(", ") : null;

@@ -1090,7 +1090,7 @@ function istasyonYukle(text, sessiz){
     db.istArsiv = db.istArsiv.slice(0, 60);
   }
   db.istGunler = db.istGunler || {};
-  db.istGunler[tarih ? tarih.split(".").reverse().join("-") : iso(new Date())] = {rows};
+  db.istGunler[iso(new Date())] = {rows};
   db.istasyon = {tarih: tarih || bugunStr(), rows};
   kaydet(); renderAll(); if (!sessiz) toast("İstasyon tablosu güncellendi"); return true;
 }
@@ -1674,15 +1674,14 @@ function gelmediMetni(){
 }
 function kapanisMetni(){
   const bugun = kapanisGun(iso(new Date()));
-  const satirlar = [];
-  if (bugun){
-    const gorev = {};
-    Object.entries(bugun.atama).forEach(([g,list])=>list.forEach(ad=>{ (gorev[ad] = gorev[ad]||[]).push(g); }));
-    bugun.kisiler.filter(ad=>!kapanisBaris(ad)).forEach(ad=>{
-      satirlar.push("• " + ad + " - " + ((gorev[ad]||[]).join(", ") || "görev yok"));
-    });
-  }
-  return "*Kapanış görevleri* · " + bugunStr() + "\n\n" + (satirlar.length ? satirlar.join("\n") : "Bugün kapanış personeli yok.");
+  if (!bugun) return "*Kapanış görevleri* · " + bugunStr() + "\n\nBugün kapanış personeli yok.";
+  const gorev = {};
+  Object.entries(bugun.atama).forEach(([g,list])=>list.forEach(ad=>{ (gorev[ad] = gorev[ad]||[]).push(g); }));
+  const satirlar = bugun.kisiler.filter(ad=>!kapanisBaris(ad)).map(ad=>{
+    const gorevler = (gorev[ad]||[]).filter(g=>bugun.kalabalik || g!==KAPANIS_EK);
+    return gorevler.length ? "• " + ad + " - " + gorevler.join(", ") : null;
+  }).filter(Boolean);
+  return "*Kapanış görevleri* · " + bugunStr() + "\n\n" + (satirlar.length ? satirlar.join("\n") : "Bugün kapanış görevi yok.");
 }
 const UYARI_METIN = {kapanis: kapanisMetni, skt: sktUyariMetni, espresso: espressoUyariMetni, depo: depoUyariMetni, bakim: bakimUyariMetni, girisYok: girisYokMetni, cikisYok: cikisYokMetni, teslim: teslimMetni, gelmedi: gelmediMetni};
 document.addEventListener("click", e=>{

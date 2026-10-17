@@ -163,7 +163,7 @@
     <div class="card"><h2>Anımsatıcı</h2><div id="yaklasanList"></div></div>
     <div class="card"><h2>Teşhir Dolabı · Pasta</h2><div id="sktPasta"></div></div>
     <div class="card"><h2>Depo Takip</h2><div id="depoBugun"></div></div>
-    <div class="card"><h2>Kapanış Görevleri</h2><div class="scroll"><table id="kapanisBugun"></table></div></div>
+    <div class="card"><h2>Kapanış Görevleri</h2><div class="scroll"><table id="kapanisBugun"></table></div><div class="toolbar" style="margin-top:8px"><button class="ghost" data-wa="kapanis">WhatsApp'a gönder</button></div></div>
     <div class="card"><details><summary><b>Haftalık Kapanış Görevleri</b></summary><div class="toolbar" style="margin-top:10px"><select class="field" id="kapanisHaftaSec"></select></div><div class="scroll" style="margin-top:10px"><table id="kapanisHafta"></table></div></details></div>
     <div class="card"><h2>Yaklaşan Bakımlar</h2><div id="bakimOzet"></div></div>
     <div class="card"><h2>Veri Yedeği</h2>
@@ -1672,7 +1672,19 @@ function gelmediMetni(){
   const satirlar = g.map(x=>`- ${x.t.ad}${x.siparisler.length ? " · " + x.siparisler.map(s=>s.metin).join(" / ") : " · sevkiyat günü"}`).join("\n");
   return "⚠️ Bugün gelmesi gereken siparişler depoya girmedi · " + bugunStr() + " " + saatMs(Date.now()) + "\n" + satirlar + "\n\nBu siparişler gelmedi mi, kontrol edip haber verir misiniz?";
 }
-const UYARI_METIN = {skt: sktUyariMetni, espresso: espressoUyariMetni, depo: depoUyariMetni, bakim: bakimUyariMetni, girisYok: girisYokMetni, cikisYok: cikisYokMetni, teslim: teslimMetni, gelmedi: gelmediMetni};
+function kapanisMetni(){
+  const bugun = kapanisGun(iso(new Date()));
+  const satirlar = [];
+  if (bugun){
+    const gorev = {};
+    Object.entries(bugun.atama).forEach(([g,list])=>list.forEach(ad=>{ (gorev[ad] = gorev[ad]||[]).push(g); }));
+    bugun.kisiler.filter(ad=>!kapanisBaris(ad)).forEach(ad=>{
+      satirlar.push("• " + ad + " - " + ((gorev[ad]||[]).join(", ") || "görev yok"));
+    });
+  }
+  return "*Kapanış görevleri* · " + bugunStr() + "\n\n" + (satirlar.length ? satirlar.join("\n") : "Bugün kapanış personeli yok.");
+}
+const UYARI_METIN = {kapanis: kapanisMetni, skt: sktUyariMetni, espresso: espressoUyariMetni, depo: depoUyariMetni, bakim: bakimUyariMetni, girisYok: girisYokMetni, cikisYok: cikisYokMetni, teslim: teslimMetni, gelmedi: gelmediMetni};
 document.addEventListener("click", e=>{
   const b = e.target.closest("[data-wa]");
   if (b && UYARI_METIN[b.dataset.wa]) waGonder(UYARI_METIN[b.dataset.wa]());

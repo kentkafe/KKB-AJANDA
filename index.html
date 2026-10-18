@@ -66,6 +66,20 @@
   .hidden { display:none !important; }
   #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--g); color:var(--w); padding:10px 14px; border-radius:10px; display:none; z-index:30; font-size:14px; max-width:92vw; }
   details summary { cursor:pointer; color:var(--g); font-weight:bold; margin:8px 0; }
+  .trow { border-bottom:1px solid #eef4f0; padding:10px 0; }
+  .trow:last-child { border-bottom:none; }
+  .trow-ust { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .trow-btn { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .trow-btn button { font-size:13px; padding:6px 10px; margin:0; }
+  .gelOzet { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+  .srow { border-bottom:1px solid #eef4f0; padding:10px 0; }
+  .srow:last-child { border-bottom:none; }
+  .srow-ust { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .srow-metin { margin-top:2px; font-size:14px; }
+  .sw.gunBugun, .sw.gunBugun .muted, .sw.gunBugun b { color:#c62828; }
+  .sw.gunYarin { background:#fff4bf; border-radius:8px; padding:10px; margin:4px 0; border-bottom:none; }
+  .notGrup.bugun { color:#c62828; }
+  .ekle-detay summary { color:var(--g); font-weight:bold; margin-bottom:6px; }
 </style>
 <style>
   :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
@@ -339,26 +353,27 @@
   <!-- TOPTANCILAR -->
   <section id="tab-toptan" class="hidden">
     <div class="card">
-      <h2>Toptancı Ekle</h2>
-      <input class="field" id="tAd" placeholder="Toptancı adı">
-      <input class="field" id="tTel" placeholder="Telefon (örn: 905551234567)">
-      <input class="field" id="tGun" placeholder="Sevkiyat günleri (örn: Pzt, Per)">
-      <button id="tEkle">Ekle</button>
+      <h2>Bugün Gelecek Mallar</h2>
+      <div id="gelecekList"></div>
+      <div id="gelmeyenBox"></div>
     </div>
     <div class="card">
       <h2>Toptancılar</h2>
-      <details><summary>Toptancı listesi</summary><div id="toptanList"></div></details>
+      <div id="toptanList"></div>
+      <details class="ekle-detay" style="margin-top:10px"><summary>+ Yeni toptancı ekle</summary>
+        <input class="field" id="tAd" placeholder="Toptancı adı">
+        <input class="field" id="tTel" placeholder="Telefon (örn: 905551234567)">
+        <input class="field" id="tGun" placeholder="Sevkiyat günleri (örn: Pzt, Per)">
+        <button id="tEkle">Ekle</button>
+      </details>
     </div>
     <div class="card">
-      <h2>Bugünkü Siparişler</h2>
+      <h2>Siparişler</h2>
       <div class="toolbar"><input type="date" id="siparisTarih"></div>
-      <div id="gelecekList"></div>
-      <div id="gelmeyenBox"></div>
       <div id="siparisList"></div>
     </div>
     <div class="card">
-      <h2>Geçmiş Siparişler</h2>
-      <details><summary>Listeyi aç</summary>
+      <details><summary><b>Geçmiş siparişler</b></summary>
         <div class="toolbar" style="margin-top:10px"><input type="date" id="gecmisTarih"><select class="field" id="gecmisTop"></select></div>
         <div id="gecmisList"></div>
       </details>
@@ -1083,16 +1098,14 @@ function bugunSevkiyat(gunler){
   return (gunler||"").toLocaleLowerCase("tr").split(/[,\s]+/).some(g=>g && g===GUN_KISA[bugunIdx].toLocaleLowerCase("tr"));
 }
 function toptanRender(){
-  const el = document.getElementById("toptanList");
-  el.innerHTML = db.toptanci.length
+  document.getElementById("toptanList").innerHTML = db.toptanci.length
     ? db.toptanci.map(t=>`
-      <div class="row" style="flex-direction:column;align-items:flex-start">
-        <div style="display:flex;justify-content:space-between;width:100%;gap:8px">
-          <b>${esc(t.ad)}</b>
-          ${bugunSevkiyat(t.gunler) ? '<span class="tag grn">Bugün sevkiyat</span>' : ''}
+      <div class="trow">
+        <div class="trow-ust">
+          <div><b>${esc(t.ad)}</b>${bugunSevkiyat(t.gunler) ? ' <span class="tag grn">Bugün sevkiyat</span>' : ''}
+          <div class="muted">${esc(t.tel||"Telefon yok")} · Sevkiyat: ${esc(t.gunler||"-")}</div></div>
         </div>
-        <div class="muted">${esc(t.tel||"Telefon yok")} · Sevkiyat: ${esc(t.gunler||"-")}</div>
-        <div style="display:flex;gap:6px;margin-top:6px">
+        <div class="trow-btn">
           <button data-top="siparis" data-id="${esc(t.id)}">Sipariş geç</button>
           <button class="ghost" data-top="sil" data-id="${esc(t.id)}">Sil</button>
         </div>
@@ -1105,16 +1118,21 @@ function toptanRender(){
   const gtopSec = gsel.value;
   gsel.innerHTML = '<option value="">Tüm toptancılar</option>' + db.toptanci.map(t=>`<option value="${esc(t.id)}">${esc(t.ad)}</option>`).join("");
   gsel.value = gtopSec;
-  const etiket = {geldi:'<span class="tag grn">Geldi</span>', gelmedi:'<span class="tag red">Gelmedi</span>', bekleniyor:'<span class="tag yel">Bekleniyor</span>'};
   const gel = gelenDurumlari();
+  const say = k => gel.filter(g=>g.durum===k).length;
+  const etiket = {geldi:'<span class="tag grn">Geldi</span>', gelmedi:'<span class="tag red">Gelmedi</span>', bekleniyor:'<span class="tag yel">Bekleniyor</span>'};
   document.getElementById("gelecekList").innerHTML = gel.length
-    ? '<div class="grp">Bugün gelmesi gerekenler</div>' + gel.map(g=>{
-        const aciklama = g.siparisler.length ? esc(g.siparisler.map(s=>s.metin).join(" / ").slice(0,120)) : "Sevkiyat günü";
-        const buton = `<button class="ghost" data-gel="${esc(g.key)}" data-deger="${g.durum==="geldi" ? "gelmedi" : "geldi"}">${g.durum==="geldi" ? "Gelmedi yap" : "Geldi yap"}</button>` + (g.elle ? `<button class="ghost" data-gel="${esc(g.key)}" data-deger="">Otomatiğe dön</button>` : "");
-        return `<div class="row"><div><b>${esc(g.t.ad)}</b><div class="muted">${aciklama}${g.elle ? " · elle işaretlendi" : ""}</div></div><span>${etiket[g.durum]}</span>${buton}</div>`;
+    ? `<div class="gelOzet"><span class="tag yel">Bekleniyor ${say("bekleniyor")}</span><span class="tag grn">Geldi ${say("geldi")}</span><span class="tag red">Gelmedi ${say("gelmedi")}</span></div>` +
+      gel.map(g=>{
+        const aciklama = g.siparisler.length ? esc(g.siparisler.map(s=>s.metin).join(" / ").slice(0,140)) : "Sevkiyat günü, sipariş yok";
+        const btn = (d, yazi) => `<button class="${g.durum===d ? "" : "ghost"}" data-gel="${esc(g.key)}" data-deger="${d}">${yazi}</button>`;
+        return `<div class="trow">
+          <div class="trow-ust"><div><b>${esc(g.t.ad)}</b>${g.elle ? ' <span class="muted">· elle</span>' : ""}<div class="muted">${aciklama}</div></div>${etiket[g.durum]}</div>
+          <div class="trow-btn">${btn("geldi","✓ Geldi")}${btn("gelmedi","✗ Gelmedi")}${g.elle ? `<button class="ghost" data-gel="${esc(g.key)}" data-deger="">Otomatiğe dön</button>` : ""}</div>
+        </div>`;
       }).join("")
     : '<div class="muted">Bugün gelmesi beklenen sipariş yok.</div>';
-  const gelmeyen = gel.filter(g=>g.durum==="gelmedi").length;
+  const gelmeyen = say("gelmedi");
   document.getElementById("gelmeyenBox").innerHTML = gelmeyen ? uyariBtn("gelmedi", "Gelmeyenleri WhatsApp'a gönder") : "";
   const gunSiparis = db.siparis.filter(s=>s.tarih===fmtTarih(st.value)).slice().reverse();
   document.getElementById("siparisList").innerHTML = gunSiparis.length
@@ -1126,7 +1144,11 @@ function toptanRender(){
 }
 function siparisSatir(s){
   const t = db.toptanci.find(x=>x.id===s.tId);
-  return `<div class="row"><div><b>${esc(t?t.ad:"Silinmiş toptancı")}</b><div class="muted">${esc(s.metin.slice(0,120))}</div></div><span class="muted">${esc(s.tarih)}${s.gelis ? "<br>geliş " + esc(fmtTarih(s.gelis)) : ""}</span><button class="ghost" data-sip="sil" data-id="${esc(s.id)}">Sil</button></div>`;
+  return `<div class="srow">
+    <div class="srow-ust"><b>${esc(t?t.ad:"Silinmiş toptancı")}</b><span class="muted">sipariş ${esc(s.tarih)}${s.gelis ? " · geliş "+esc(fmtTarih(s.gelis)) : ""}</span></div>
+    <div class="muted srow-metin">${esc(s.metin.slice(0,200))}</div>
+    <div class="trow-btn"><button class="ghost" data-sip="duzelt" data-id="${esc(s.id)}">Düzelt</button><button class="ghost" data-sip="sil" data-id="${esc(s.id)}">Sil</button></div>
+  </div>`;
 }
 ["siparisTarih","gecmisTarih","gecmisTop"].forEach(id=>document.getElementById(id).addEventListener("change", toptanRender));
 document.getElementById("tEkle").onclick = ()=>{
@@ -1163,8 +1185,22 @@ document.addEventListener("click", e=>{
 
 document.addEventListener("click", e=>{
   const b = e.target.closest("[data-sip]"); if (!b) return;
-  db.siparis = db.siparis.filter(x=>String(x.id)!==String(b.dataset.id));
-  kaydet(); renderAll(); toast("Sipariş silindi");
+  const s = db.siparis.find(x=>String(x.id)===String(b.dataset.id)); if (!s) return;
+  if (b.dataset.sip==="duzelt"){
+    const t = db.toptanci.find(x=>x.id===s.tId);
+    openModal("Siparişi düzelt" + (t ? ": "+t.ad : ""), `
+      <label class="muted">Geliş günü</label><select class="field" data-f="gelis">${gelisTumSecenek(s.gelis)}</select>
+      <textarea class="field" data-f="metin" rows="6">${esc(s.metin)}</textarea>`,
+      v=>{
+        if (!v.metin) return toast("Sipariş boş");
+        s.metin = v.metin; s.gelis = v.gelis || s.gelis;
+        kaydet(); renderAll(); toast("Sipariş güncellendi");
+      }, "Kaydet");
+    return;
+  }
+  if (b.dataset.sip==="sil"){
+    db.siparis = db.siparis.filter(x=>x!==s); kaydet(); renderAll(); toast("Sipariş silindi");
+  }
 });
 
 // ---- Kapanış görevleri ----
@@ -1319,8 +1355,8 @@ function bakimDurum(b){
   else { etiket=gun+" gün kaldı"; sinif="grn"; }
   return {sonraki, gun, etiket, sinif};
 }
-function swRow(kind, id, bgYazi, icerik){
-  return `<div class="sw" data-kind="${kind}" data-id="${esc(id)}">
+function swRow(kind, id, bgYazi, icerik, cls){
+  return `<div class="sw ${cls||""}" data-kind="${kind}" data-id="${esc(id)}">
     <div class="fg">${icerik}</div>
     <div class="acts-row">
       <button data-act="yapildi" class="ghost">✓ ${bgYazi}</button>
@@ -1362,18 +1398,25 @@ document.addEventListener("click", e=>{
 
 // ---- Notlar ----
 function notRender(){
-  const bugunSon = new Date(); bugunSon.setHours(23,59,59,999);
+  const bas = new Date(); bas.setHours(0,0,0,0);
+  const bugunIso = iso(bas), yarinIso = iso(new Date(bas.getTime()+86400000));
   const acik = db.notlar.filter(n=>n.durum!=="yapildi");
-  const satir = n => swRow("not", n.id, "Yapıldı",
+  const satir = (n, cls) => swRow("not", n.id, "Yapıldı",
     `<div><b>${esc(n.metin)}</b>
-     <div class="muted">${n.tarih ? fmtDue(n)+(n.tekrar!=="yok" ? " · "+TEKRAR[n.tekrar] : "") : "Tarihsiz"}</div></div>`);
+     <div class="muted">${n.tarih ? fmtDue(n)+(n.tekrar!=="yok" ? " · "+TEKRAR[n.tekrar] : "") : "Tarihsiz"}</div></div>`, cls);
   const tarihli = acik.filter(n=>n.tarih).sort((a,b)=>dueOf(a)-dueOf(b));
-  const gecikmis = tarihli.filter(n=>dueOf(n) <= bugunSon);
-  const yaklasan = tarihli.filter(n=>dueOf(n) > bugunSon);
+  const gun = n => iso(dueOf(n));
+  const geciken = tarihli.filter(n=>gun(n) < bugunIso);
+  const bugunL = tarihli.filter(n=>gun(n) === bugunIso);
+  const yarinL = tarihli.filter(n=>gun(n) === yarinIso);
+  const yaklasan = tarihli.filter(n=>gun(n) > yarinIso);
   const tarihsiz = acik.filter(n=>!n.tarih);
-  const grup = (baslik, liste) => liste.length ? `<div class="notGrup muted">${baslik} (${liste.length})</div>` + liste.map(satir).join("") : "";
+  const grup = (baslik, liste, ek, cls) => liste.length
+    ? `<div class="notGrup muted ${ek}">${baslik} (${liste.length})</div>` + liste.map(n=>satir(n, cls)).join("") : "";
   document.getElementById("notList").innerHTML =
-    grup("Bugün ve geciken", gecikmis) + grup("Yaklaşan", yaklasan) + grup("Tarihsiz", tarihsiz) || '<div class="muted">Not yok.</div>';
+    grup("Geciken", geciken, "", "") + grup("Bugün", bugunL, "bugun", "gunBugun") +
+    grup("Yarın", yarinL, "", "gunYarin") + grup("Yaklaşan", yaklasan, "", "") + grup("Tarihsiz", tarihsiz, "", "")
+    || '<div class="muted">Not yok.</div>';
   const bitenler = db.notlar.filter(n=>n.durum==="yapildi");
   document.getElementById("notBitenList").innerHTML = bitenler.length
     ? bitenler.map(n=>`<div class="row"><span>${esc(n.metin)}</span><span class="muted">${n.tarih?fmtDue(n):""}</span><button class="ghost" data-notgeri="${esc(n.id)}">Geri al</button></div>`).join("")
@@ -1676,6 +1719,17 @@ function gelisSecenekleri(t){
   }
   const secilen = tumu.filter(x=>x.uygun);
   return (secilen.length ? secilen : tumu).map(x=>x.opt).join("");
+}
+function gelisTumSecenek(secili){
+  const bas = new Date(); bas.setHours(0,0,0,0);
+  let h = "", var_ = false;
+  for (let i=-7;i<=14;i++){
+    const d = new Date(bas.getTime()+i*86400000); const idx = (d.getDay()+6)%7; const v = iso(d);
+    if (v===secili) var_ = true;
+    h += `<option value="${v}"${v===secili?" selected":""}>${GUN_AD[idx]} · ${fmtTarih(v)}${i===0?" (bugün)":""}</option>`;
+  }
+  if (secili && !var_) h = `<option value="${esc(secili)}" selected>${esc(fmtTarih(secili))}</option>` + h;
+  return h;
 }
 function gelmediMetni(){
   const g = gelenDurumlari().filter(x=>x.durum==="gelmedi");

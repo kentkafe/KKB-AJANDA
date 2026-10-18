@@ -55,13 +55,11 @@
   .toolbar input[type=number] { width:80px; }
   .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
   .chips a { background:var(--g2); color:var(--w); padding:9px 12px; border-radius:8px; text-decoration:none; font-size:14px; }
-  .sw { position:relative; overflow:hidden; border-bottom:1px solid #eef4f0; touch-action:pan-y; background:var(--w); }
+  .sw { border-bottom:1px solid #eef4f0; padding:10px 0; background:var(--w); }
   .sw:last-child { border-bottom:none; }
-  .sw .bgR { position:absolute; inset:0; background:var(--g2); color:#fff; display:flex; align-items:center; padding-left:16px; font-weight:bold; font-size:14px; }
-  .sw .fg { position:relative; z-index:1; background:var(--w); padding:10px 4px; display:flex; justify-content:space-between; gap:8px; align-items:center; transition:transform .2s; user-select:none; }
-  .sw .acts { position:absolute; right:0; top:0; bottom:0; width:200px; display:flex; z-index:0; }
-  .sw .acts button { flex:1; border-radius:0; font-size:13px; padding:0 4px; }
-  .sw.open .fg { transform:translateX(-200px); }
+  .sw .acts-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .sw .acts-row button { font-size:13px; padding:6px 10px; margin:0; }
+  .notGrup { font-size:12px; font-weight:bold; text-transform:uppercase; letter-spacing:.04em; margin:14px 0 2px; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:20; }
   .modal.hidden { display:none; }
   .box { background:var(--w); padding:16px; border-radius:12px; width:min(92vw,420px); max-height:90vh; overflow-y:auto; }
@@ -806,33 +804,6 @@ document.addEventListener("click", e=>{
   else if (act==="yapildi") yapildi(kind,id);
 });
 
-// ---- Kaydırma ----
-let drag = null;
-document.addEventListener("pointerdown", e=>{
-  const sw = e.target.closest(".sw"); if (!sw || e.target.closest(".acts")) return;
-  drag = {sw, x:e.clientX, dx:0, moved:false};
-});
-document.addEventListener("pointermove", e=>{
-  if (!drag) return;
-  const dx = e.clientX - drag.x;
-  if (Math.abs(dx) > 8) drag.moved = true;
-  if (!drag.moved) return;
-  drag.dx = dx;
-  const base = drag.sw.classList.contains("open") ? -200 : 0;
-  const nx = Math.max(-200, Math.min(140, base+dx));
-  const fg = drag.sw.querySelector(".fg"); fg.style.transition = "none"; fg.style.transform = `translateX(${nx}px)`;
-});
-document.addEventListener("pointerup", ()=>{
-  if (!drag) return;
-  const {sw, dx, moved} = drag; drag = null;
-  const fg = sw.querySelector(".fg"); fg.style.transition = ""; fg.style.transform = "";
-  if (!moved){ sw.classList.toggle("open"); return; }
-  const total = (sw.classList.contains("open") ? -200 : 0) + dx;
-  if (total > 90){ sw.classList.remove("open"); yapildi(sw.dataset.kind, sw.dataset.id); }
-  else if (total < -60){ sw.classList.add("open"); }
-  else { sw.classList.remove("open"); }
-});
-
 // ---- Bugün ----
 function ayKaydir(n){
   const inp = document.getElementById("ozetAy");
@@ -1350,11 +1321,11 @@ function bakimDurum(b){
 }
 function swRow(kind, id, bgYazi, icerik){
   return `<div class="sw" data-kind="${kind}" data-id="${esc(id)}">
-    <div class="bgR">✓ ${bgYazi}</div>
     <div class="fg">${icerik}</div>
-    <div class="acts">
+    <div class="acts-row">
+      <button data-act="yapildi" class="ghost">✓ ${bgYazi}</button>
       <button data-act="duzelt" class="ghost">Düzelt</button>
-      <button data-act="ertele">Ertele</button>
+      <button data-act="ertele" class="ghost">Ertele</button>
       <button data-act="sil" style="background:#b3261e">Sil</button>
     </div></div>`;
 }
@@ -1391,20 +1362,28 @@ document.addEventListener("click", e=>{
 
 // ---- Notlar ----
 function notRender(){
-  const acik = db.notlar.filter(n=>n.durum!=="yapildi").sort((a,b)=>{
-    const da = dueOf(a), db2 = dueOf(b);
-    if (da && db2) return da-db2; if (da) return -1; if (db2) return 1; return 0;
-  });
-  document.getElementById("notList").innerHTML = acik.length
-    ? acik.map(n=>swRow("not", n.id, "Yapıldı",
-        `<div><b>${esc(n.metin)}</b>
-         <div class="muted">${n.tarih ? fmtDue(n)+(n.tekrar!=="yok" ? " · "+TEKRAR[n.tekrar] : "") : "Tarihsiz not"}</div></div>`)).join("")
-    : '<div class="muted">Not yok.</div>';
+  const bugunSon = new Date(); bugunSon.setHours(23,59,59,999);
+  const acik = db.notlar.filter(n=>n.durum!=="yapildi");
+  const satir = n => swRow("not", n.id, "Yapıldı",
+    `<div><b>${esc(n.metin)}</b>
+     <div class="muted">${n.tarih ? fmtDue(n)+(n.tekrar!=="yok" ? " · "+TEKRAR[n.tekrar] : "") : "Tarihsiz"}</div></div>`);
+  const tarihli = acik.filter(n=>n.tarih).sort((a,b)=>dueOf(a)-dueOf(b));
+  const gecikmis = tarihli.filter(n=>dueOf(n) <= bugunSon);
+  const yaklasan = tarihli.filter(n=>dueOf(n) > bugunSon);
+  const tarihsiz = acik.filter(n=>!n.tarih);
+  const grup = (baslik, liste) => liste.length ? `<div class="notGrup muted">${baslik} (${liste.length})</div>` + liste.map(satir).join("") : "";
+  document.getElementById("notList").innerHTML =
+    grup("Bugün ve geciken", gecikmis) + grup("Yaklaşan", yaklasan) + grup("Tarihsiz", tarihsiz) || '<div class="muted">Not yok.</div>';
   const bitenler = db.notlar.filter(n=>n.durum==="yapildi");
   document.getElementById("notBitenList").innerHTML = bitenler.length
-    ? bitenler.map(n=>`<div class="row"><span>${esc(n.metin)}</span><span class="muted">${n.tarih?fmtDue(n):""}</span></div>`).join("")
+    ? bitenler.map(n=>`<div class="row"><span>${esc(n.metin)}</span><span class="muted">${n.tarih?fmtDue(n):""}</span><button class="ghost" data-notgeri="${esc(n.id)}">Geri al</button></div>`).join("")
     : '<div class="muted">Tamamlanan yok.</div>';
 }
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-notgeri]"); if (!b) return;
+  const n = db.notlar.find(x=>String(x.id)===String(b.dataset.notgeri)); if (!n) return;
+  n.durum = "acik"; kaydet(); renderAll(); toast("Not geri alındı");
+});
 document.getElementById("nEkle").onclick = ()=>{
   const metin = document.getElementById("nMetin").value.trim();
   if (!metin) return toast("Not yaz");

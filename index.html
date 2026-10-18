@@ -80,6 +80,9 @@
   .sw.gunYarin { background:#fff4bf; border-radius:8px; padding:10px; margin:4px 0; border-bottom:none; }
   .notGrup.bugun { color:#c62828; }
   .ekle-detay summary { color:var(--g); font-weight:bold; margin-bottom:6px; }
+  .kart-baslik { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .kart-baslik h2 { flex:1; margin:0 0 6px; }
+  .tarih-secici { width:auto; max-width:160px; padding:6px 8px; margin:0; }
 </style>
 <style>
   :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
@@ -170,7 +173,7 @@
     <div class="card"><h2>Şu An Molada</h2><div id="moladaBugun"></div></div>
     <div class="card"><h2>Bugün Çalışan</h2><div id="calisanList"></div></div>
     <div class="card"><h2>Bugün İzinli</h2><div id="izinList"></div></div>
-    <div class="card"><h2>Vardiya Takip Durumu</h2><div id="girisOzet"></div></div>
+    <div class="card"><div class="kart-baslik"><h2>Vardiya Takip Durumu</h2><input type="date" class="field tarih-secici" id="vardiyaTarih" aria-label="Tarih seç"></div><div id="girisOzet"></div></div>
     <div class="card"><h2>Espresso Makineleri</h2><div class="muted" id="jimboTarih"></div><div id="jimboBugun"></div></div>
     <div class="card"><h2>Anımsatıcı</h2><div id="yaklasanList"></div></div>
     <div class="card"><h2>Teşhir Dolabı · Pasta</h2><div id="sktPasta"></div></div>
@@ -634,52 +637,68 @@ async function havaCek(){
 }
 
 // ---- Giriş / Çıkış analizi ----
-function girisDurum(){
+function varsayilanVardiyaGun(){ const d = new Date(); if (d.getHours() < 6) d.setDate(d.getDate()-1); return iso(d); }
+function vardiyaGun(){ const el = document.getElementById("vardiyaTarih"); return (el && el.value) || varsayilanVardiyaGun(); }
+// Bir tarihin hangi haftanın programına ait olduğunu bulur (aktif haftaya değil)
+function gunProgram(gunIso){
+  const d = new Date(gunIso+"T00:00:00");
+  for (const k of Object.keys(db.haftalar)){
+    const a = parseAralik(k);
+    if (a && d >= a.s && d < a.e) return {h: db.haftalar[k], idx: Math.round((d - a.s)/86400000)};
+  }
+  return null;
+}
+function girisDurum(gunIso){
   const rows = db.giris.rows || [];
   if (!rows.length) return null;
-  const now = new Date();
-  const key = aktifHaftaKey(); if (!key) return null;
-  const h = db.haftalar[key];
-  const sonuc = {gec:[], girmeyen:[], cikmayan:[]};
-  const bugunGun = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const kontrol = [{idx:bugunIdx, off:0, bugunMi:true}];
-  if (now.getHours() < 6) kontrol.push({idx:(bugunIdx+6)%7, off:-1, bugunMi:false});
-  kontrol.forEach(g=>{
-    const base = new Date(bugunGun.getFullYear(), bugunGun.getMonth(), bugunGun.getDate()+g.off);
-    h.personel.forEach(ad=>{
-      const v = (h.program[ad]||[])[g.idx];
-      const s = saatAraligi(v); if (!s) return;
-      const bas = new Date(base.getTime()+s.b*60000), bit = new Date(base.getTime()+s.e*60000);
-      const kayit = rows.filter(r=>sameName(ad, r.ad));
-      const girisler = kayit.filter(r=>/BAŞLIYOR/.test(r.islem) && r.t >= bas.getTime()-180*60000 && r.t <= bit.getTime()).sort((a,b)=>a.t-b.t);
-      const cikislar = kayit.filter(r=>/ÇIKIYOR/.test(r.islem) && r.t >= bas.getTime() && r.t <= bit.getTime()+180*60000).sort((a,b)=>a.t-b.t);
-      if (girisler.length){
-        const fark = Math.round((girisler[0].t - bas.getTime())/60000);
-        if (fark > 5) sonuc.gec.push({ad, v, dk:fark, neden:girisler[0].neden});
-      } else if (now.getTime() > bas.getTime()+15*60000){
-        sonuc.girmeyen.push({ad, v, gun: g.bugunMi ? "bugün" : "dün"});
-      }
-      if (!cikislar.length && now.getTime() > bit.getTime()+30*60000){
-        sonuc.cikmayan.push({ad, v, gun: g.bugunMi ? "bugün" : "dün"});
-      }
-    });
+  const gi = gunIso || vardiyaGun();
+  const now = new Date(), bugunIso = iso(now);
+  const dunIso = iso(new Date(now.getTime() - 86400000));
+  const etiket = gi===bugunIso ? "bugün" : (gi===dunIso ? "dün" : fmtTarih(gi));
+  const sonuc = {gec:[], girmeyen:[], cikmayan:[], gelecek: gi > bugunIso, programYok: false, gun: gi};
+  if (sonuc.gelecek) return sonuc;
+  const gp = gunProgram(gi);
+  if (!gp){ sonuc.programYok = true; return sonuc; }
+  const base = new Date(gi+"T00:00:00");
+  gp.h.personel.forEach(ad=>{
+    const v = (gp.h.program[ad]||[])[gp.idx];
+    const s = saatAraligi(v); if (!s) return;
+    const bas = base.getTime() + s.b*60000, bit = base.getTime() + s.e*60000;
+    const kayit = rows.filter(r=>sameName(ad, r.ad));
+    const girisler = kayit.filter(r=>/BAŞLIYOR/.test(r.islem) && r.t >= bas-180*60000 && r.t <= bit).sort((a,b)=>a.t-b.t);
+    const cikislar = kayit.filter(r=>/ÇIKIYOR/.test(r.islem) && r.t >= bas && r.t <= bit+180*60000);
+    if (girisler.length){
+      const fark = Math.round((girisler[0].t - bas)/60000);
+      if (fark > 5) sonuc.gec.push({ad, v, dk:fark, neden:girisler[0].neden, gun:etiket});
+    } else if (now.getTime() >= bas+15*60000){
+      sonuc.girmeyen.push({ad, v, gun:etiket});
+    }
+    if (!cikislar.length && now.getTime() > bit+30*60000){
+      sonuc.cikmayan.push({ad, v, gun:etiket});
+    }
   });
   return sonuc;
 }
-function girisRender(){
-  document.getElementById("girisSon").textContent = "Son kayıt: " + (db.giris.son ? fmtDT(db.giris.son) : "yok") + " · Kayıt sayısı: " + (db.giris.rows||[]).length;
-  const s = girisDurum();
-  const el = document.getElementById("girisOzet");
-  if (!s){ el.innerHTML = '<div class="muted">Giriş/çıkış tablosu yüklenmedi. "Vardiya Takip" sekmesinden yapıştır.</div>'; return; }
+function girisOzetHtml(gi){
+  const s = girisDurum(gi);
+  if (!s) return '<div class="muted">Giriş/çıkış tablosu yüklenmedi. "Vardiya Takip" sekmesinden yapıştır.</div>';
+  if (s.gelecek) return '<div class="muted">Gelecek bir gün seçildi, henüz kayıt yok.</div>';
+  if (s.programYok) return '<div class="muted">Bu tarihin haftalık programı yüklenmemiş.</div>';
   const blok = (baslik, liste, metin)=> `<div class="grp">${baslik} (${liste.length})</div>` +
     (liste.length ? liste.map(metin).join("") : '<div class="muted">Yok.</div>');
-  el.innerHTML =
-    blok("Geç kalanlar", s.gec, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag yel">${x.dk} dk geç · ${esc(x.v)}${x.neden?" · "+esc(x.neden):""}</span></div>`) +
+  return blok("Geç kalanlar", s.gec, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag yel">${x.dk} dk geç · ${esc(x.v)}${x.neden?" · "+esc(x.neden):""}</span></div>`) +
     blok("Giriş yapmayanlar", s.girmeyen, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag red">${esc(x.v)} · ${x.gun}</span></div>`) +
     blok("Çıkış yapmayanlar (mesai bitti)", s.cikmayan, x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag red">${esc(x.v)} · ${x.gun}</span></div>`) +
     (s.girmeyen.length ? uyariBtn("girisYok", "Giriş yapmayanlara WhatsApp'tan hatırlat") : "") +
     (s.cikmayan.length ? uyariBtn("cikisYok", "Çıkış yapmayanlara WhatsApp'tan hatırlat") : "");
 }
+function girisRender(){
+  document.getElementById("girisSon").textContent = "Son kayıt: " + (db.giris.son ? fmtDT(db.giris.son) : "yok") + " · Kayıt sayısı: " + (db.giris.rows||[]).length;
+  const picker = document.getElementById("vardiyaTarih");
+  if (picker && !picker.value) picker.value = varsayilanVardiyaGun();
+  document.getElementById("girisOzet").innerHTML = girisOzetHtml(vardiyaGun());
+}
+document.getElementById("vardiyaTarih").addEventListener("change", girisRender);
 function satirlariAyir(line, d){
   const out=[]; let cur="", q=false;
   for (let i=0;i<line.length;i++){
@@ -1642,14 +1661,14 @@ function bakimUyariMetni(){
   return "⚠️ Bakım uyarısı · " + bugunStr() + "\n" + bk.map(b=>`- ${b.ad} · ${b.d.etiket}`).join("\n") + "\n\nLütfen bakımların planlamasını yapın.";
 }
 function girisYokMetni(){
-  const s = girisDurum();
+  const gi = vardiyaGun(); const s = girisDurum(gi);
   const l = s ? s.girmeyen : [];
-  return "⚠️ Vardiya girişi · " + bugunStr() + "\n" + l.map(x=>`- ${x.ad} · ${x.v}`).join("\n") + "\n\nArkadaşlar işe girişlerinizi yapmamışsınız, lütfen giriş yapın.";
+  return "⚠️ Vardiya girişi · " + fmtTarih(gi) + "\n" + l.map(x=>`- ${x.ad} · ${x.v}`).join("\n") + "\n\nArkadaşlar işe girişlerinizi yapmamışsınız, lütfen giriş yapın.";
 }
 function cikisYokMetni(){
-  const s = girisDurum();
+  const gi = vardiyaGun(); const s = girisDurum(gi);
   const l = s ? s.cikmayan : [];
-  return "⚠️ Vardiya çıkışı · " + bugunStr() + "\n" + l.map(x=>`- ${x.ad} · ${x.v}`).join("\n") + "\n\nArkadaşlar işten çıkış yapmamışsınız, lütfen çıkış yapın.";
+  return "⚠️ Vardiya çıkışı · " + fmtTarih(gi) + "\n" + l.map(x=>`- ${x.ad} · ${x.v}`).join("\n") + "\n\nArkadaşlar işten çıkış yapmamışsınız, lütfen çıkış yapın.";
 }
 function teslimEksikler(){
   const bug = iso(new Date());

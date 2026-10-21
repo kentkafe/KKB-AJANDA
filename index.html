@@ -17,7 +17,7 @@
   button.ghost { background:var(--w); color:var(--g); border:1px solid var(--g); }
   button.search-btn { background:var(--w); color:var(--g); font-size:18px; padding:6px 12px; }
   nav { display:flex; overflow-x:auto; background:var(--w); border-bottom:1px solid #cfe2d6; position:sticky; top:118px; z-index:4; }
-  nav button { flex:0 0 auto; background:none; color:var(--g); border-radius:0; padding:12px 14px; border-bottom:3px solid transparent; }
+  nav button { flex:0 0 auto; background:none; color:var(--g); border-radius:0; padding:18px 22px; border-bottom:3px solid transparent; }
   nav button.on { border-bottom-color:var(--g); font-weight:bold; }
   main { padding:14px; max-width:980px; margin:0 auto; }
   .card { background:var(--w); border-radius:12px; padding:14px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
@@ -83,6 +83,13 @@
   .kart-baslik { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .kart-baslik h2 { flex:1; margin:0 0 6px; }
   .tarih-secici { width:auto; max-width:160px; padding:6px 8px; margin:0; }
+  details.kapali > summary { cursor:pointer; font-weight:bold; color:var(--g); text-transform:uppercase; text-align:center; padding:8px 0; font-size:16px; list-style:none; }
+  details.kapali > summary::-webkit-details-marker { display:none; }
+  details.kapali[open] > summary { border-bottom:1px solid #e3d59a; margin-bottom:10px; }
+  .vurgu td { background:#fff4bf !important; }
+  .hava-ust { font-size:15px; } .hava-ust b { font-size:26px; color:var(--g); margin-right:6px; }
+  .hava-detay { font-size:14px; margin-top:4px; }
+  .row .ghost { margin-left:6px; }
 </style>
 <style>
   :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
@@ -131,7 +138,7 @@
   td.wrap { white-space:normal; min-width:200px; text-align:left; }
   .filtreler { flex-wrap:wrap; }
   .filtreler select { font-size:13px; padding:6px; border-radius:8px; border:1px solid #bcd3c4; max-width:100%; }
-  nav button { text-transform:uppercase; font-size:13px; }
+  nav button { text-transform:uppercase; font-size:16px; }
   h2 { text-transform:uppercase; text-align:center; }
   th, .grp { text-align:center; text-transform:uppercase; }
 </style>
@@ -232,8 +239,9 @@
       </div>
     </div>
     <div class="card">
-      <h2>Kişi Bazında Haftalık Özet</h2>
+      <details class="kapali"><summary>Kişi Bazında Haftalık Özet</summary>
       <div class="scroll"><table id="ozetTable" data-filtre></table></div>
+    </details>
     </div>
   </section>
 
@@ -281,12 +289,13 @@
       <div class="scroll"><table id="istTable" data-filtre></table></div>
     </div>
     <div class="card">
-      <h2>Tabloyu Güncelle</h2>
+      <details class="kapali"><summary>Tabloyu Güncelle</summary>
       <textarea class="field" id="istYapistir" rows="4" placeholder="Tabloyu buraya yapıştır"></textarea>
       <p class="muted" id="istOto"></p>
       <button id="istCek">Şimdi çek</button>
       <button id="istYukle">Yükle</button>
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/10011sRFN2be-ANCK6ep9Tr4mdurfgC49pSmNfaJzv8c/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
+    </details>
     </div>
     <div class="card">
       <details><summary><b>Arşiv</b></summary>
@@ -308,6 +317,7 @@
     </div>
     <div class="card">
       <h2>Kayıtlar</h2>
+      <div class="toolbar"><label class="muted">Çıkarılma günü:</label><input type="date" id="sktGunSec"><button class="ghost" id="sktGunTemizle">Tümü</button></div>
       <div class="scroll"><table id="sktTable" data-filtre></table></div>
     </div>
   </section>
@@ -324,10 +334,11 @@
       <a class="btn ghost" style="margin-left:6px" href="https://docs.google.com/spreadsheets/d/118kPIZqsol7o0DGTt_7EcJn7xLExIwIomou9cDjBg00/edit?usp=drivesdk" target="_blank">Sheet'i aç</a>
     </div>
     <div class="card">
-      <h2>Aylık Kayıtlar</h2>
+      <details class="kapali"><summary>Aylık Kayıtlar</summary>
       <div class="toolbar"><label class="muted">Ay:</label><input type="month" id="jimboAy"></div>
       <p class="muted" id="jimboOzet"></p>
       <div class="scroll"><table id="jimboTablo" data-filtre></table></div>
+    </details>
     </div>
   </section>
 
@@ -346,10 +357,11 @@
       <a class="btn" href="https://drive.google.com/drive/folders/1FCFMaOADHM0Btf6unSZ8rsgI9iNU1LKdKCRx-HzhskKQ9fgO-m18iXFx7rjhwr5ENH5w55xr" target="_blank" style="text-decoration:none">Fatura ve irsaliye klasörünü aç</a>
     </div>
     <div class="card">
-      <h2>Aylık Depo Kayıtları</h2>
+      <details class="kapali"><summary>Aylık Depo Kayıtları</summary>
       <div class="toolbar"><label class="muted">Ay:</label><input type="month" id="depoAy"></div>
       <p class="muted" id="depoOzet"></p>
       <div class="scroll"><table id="depoTable" data-filtre></table></div>
+    </details>
     </div>
   </section>
 
@@ -361,13 +373,15 @@
       <div id="gelmeyenBox"></div>
     </div>
     <div class="card">
-      <h2>Toptancılar</h2>
-      <div id="toptanList"></div>
-      <details class="ekle-detay" style="margin-top:10px"><summary>+ Yeni toptancı ekle</summary>
+      <details>
+        <summary><b>Toptancılar</b> · <span id="toptanSayi"></span></summary>
+        <div id="toptanList" style="margin-top:10px"></div>
+        <details class="ekle-detay" style="margin-top:10px"><summary>+ Yeni toptancı ekle</summary>
         <input class="field" id="tAd" placeholder="Toptancı adı">
         <input class="field" id="tTel" placeholder="Telefon (örn: 905551234567)">
         <input class="field" id="tGun" placeholder="Sevkiyat günleri (örn: Pzt, Per)">
         <button id="tEkle">Ekle</button>
+        </details>
       </details>
     </div>
     <div class="card">
@@ -386,19 +400,20 @@
   <!-- BAKIM -->
   <section id="tab-bakim" class="hidden">
     <div class="card">
-      <h2>Cihaz Ekle</h2>
+      <details class="kapali"><summary>Cihaz Ekle</summary>
       <input class="field" id="cAd" placeholder="Cihaz adı (örn: POS 1, Cin Bali 1)">
       <input class="field" id="cMarka" placeholder="Marka (örn: Ingenico)">
       <input class="field" id="cModel" placeholder="Model">
       <input class="field" id="cSeri" placeholder="Seri numarası">
       <button id="cEkle">Cihaz ekle</button>
+    </details>
     </div>
     <div class="card">
       <h2>Cihazlar</h2>
       <details><summary>Cihaz listesi</summary><div id="cihazList"></div></details>
     </div>
     <div class="card">
-      <h2>Yeni Bakım Ekle</h2>
+      <details class="kapali"><summary>Yeni Bakım Ekle</summary>
       <select class="field" id="bCihaz"><option value="">— Cihaz seç (isteğe bağlı) —</option></select>
       <input class="field" id="bAd" placeholder="Ekipman adı (cihaz seçmediysen ya da farklı bir ad yazacaksan)">
       <select class="field" id="bPeriyot">
@@ -408,6 +423,7 @@
       <p class="muted" style="margin:0 0 4px">Sonraki bakım tarihi</p>
       <input class="field" id="bTarih" type="date">
       <button id="bEkle">Ekle</button>
+    </details>
     </div>
     <div class="card">
       <h2>Periyodik Bakımlar</h2>
@@ -430,6 +446,7 @@
       </div>
       <button id="nEkle">Ekle</button>
       <button class="ghost" id="bildirimBtn">Bildirimlere izin ver</button>
+      <p class="muted" id="bildirimNot" style="margin:8px 0 0"></p>
     </div>
     <div class="card">
       <h2>Notlar ve Anımsatıcılar</h2>
@@ -628,12 +645,26 @@ function havaKodYazi(c){
   if (c>=95) return "fırtınalı";
   return "";
 }
+// Atatürk Kültür Parkı, Karacabey (yaklaşık koordinat; gerekirse burayı düzeltin)
+const HAVA_KONUM = {lat: 40.2025, lon: 28.3585, ad: "Atatürk Kültür Parkı · Karacabey"};
+const HAVA_YON = ["K","KD","D","GD","G","GB","B","KB"];
 async function havaCek(){
+  const el = document.getElementById("hava");
   try {
-    const r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=40.2&longitude=28.36&current=temperature_2m,weather_code&timezone=Europe%2FIstanbul");
-    const j = await r.json();
-    document.getElementById("hava").textContent = "Karacabey: "+Math.round(j.current.temperature_2m)+"°C · "+havaKodYazi(j.current.weather_code);
-  } catch(e){ document.getElementById("hava").textContent = "Hava durumu alınamadı"; }
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${HAVA_KONUM.lat}&longitude=${HAVA_KONUM.lon}`+
+      "&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,is_day,cloud_cover"+
+      "&daily=sunrise,sunset,uv_index_max&forecast_days=1&timezone=Europe%2FIstanbul";
+    const ctl = new AbortController(); const zaman = setTimeout(()=>ctl.abort(), 8000);
+    const r = await fetch(url, {signal: ctl.signal}); clearTimeout(zaman);
+    const j = await r.json(); const c = j.current, d = j.daily;
+    const yon = HAVA_YON[Math.round(c.wind_direction_10m/45) % 8];
+    const kod = havaKodYazi(c.weather_code);
+    el.innerHTML = `<div class="hava-ust"><b>${Math.round(c.temperature_2m)}°C</b>${kod ? esc(kod) : ""}</div>` +
+      `<div class="hava-detay">Hissedilen ${Math.round(c.apparent_temperature)}°C · Nem %${c.relative_humidity_2m} · Bulut %${c.cloud_cover}</div>` +
+      `<div class="hava-detay">Rüzgar ${Math.round(c.wind_speed_10m)} km/sa ${yon} (hamle ${Math.round(c.wind_gusts_10m)} km/sa)</div>` +
+      `<div class="hava-detay">${c.is_day ? "☀️ Gündüz" : "🌙 Gece"} · UV en yüksek ${Math.round(d.uv_index_max[0])} · Gün doğumu ${d.sunrise[0].slice(11,16)} · Batış ${d.sunset[0].slice(11,16)}</div>` +
+      `<div class="muted" style="font-size:12px;margin-top:4px">${esc(HAVA_KONUM.ad)}</div>`;
+  } catch(e){ el.textContent = "Hava durumu alınamadı. İnternet bağlantısını kontrol edin."; }
 }
 
 // ---- Giriş / Çıkış analizi ----
@@ -775,6 +806,7 @@ function geriAl(){
 }
 function yapildi(kind,id){
   const x = bul(kind,id); if (!x) return;
+  if (kind==="not"){ db.tamamlananlar = db.tamamlananlar || []; db.tamamlananlar.unshift({id:x.id, metin:x.metin, t:Date.now(), tekrar:x.tekrar}); }
   if (kind==="bakim"){ x.sonTarih = iso(bugun); toast(x.ad+" bugün yapıldı"); }
   else if (x.tekrar && x.tekrar!=="yok" && x.tarih){
     const d = dueOf(x);
@@ -1117,6 +1149,7 @@ function bugunSevkiyat(gunler){
   return (gunler||"").toLocaleLowerCase("tr").split(/[,\s]+/).some(g=>g && g===GUN_KISA[bugunIdx].toLocaleLowerCase("tr"));
 }
 function toptanRender(){
+  document.getElementById("toptanSayi").textContent = db.toptanci.length + " toptancı";
   document.getElementById("toptanList").innerHTML = db.toptanci.length
     ? db.toptanci.map(t=>`
       <div class="trow">
@@ -1436,10 +1469,16 @@ function notRender(){
     grup("Geciken", geciken, "", "") + grup("Bugün", bugunL, "bugun", "gunBugun") +
     grup("Yarın", yarinL, "", "gunYarin") + grup("Yaklaşan", yaklasan, "", "") + grup("Tarihsiz", tarihsiz, "", "")
     || '<div class="muted">Not yok.</div>';
-  const bitenler = db.notlar.filter(n=>n.durum==="yapildi");
-  document.getElementById("notBitenList").innerHTML = bitenler.length
-    ? bitenler.map(n=>`<div class="row"><span>${esc(n.metin)}</span><span class="muted">${n.tarih?fmtDue(n):""}</span><button class="ghost" data-notgeri="${esc(n.id)}">Geri al</button></div>`).join("")
+  db.tamamlananlar = db.tamamlananlar || [];
+  const gecmisL = db.tamamlananlar.slice(0,60);
+  document.getElementById("notBitenList").innerHTML = gecmisL.length
+    ? gecmisL.map(k=>{
+        const n = db.notlar.find(x=>String(x.id)===String(k.id));
+        const geriVar = !!n && n.durum==="yapildi";
+        return `<div class="row"><span>${esc(k.metin)}</span><span class="muted">${fmtDT(k.t)}${k.tekrar&&k.tekrar!=="yok" ? " · tekrarlı" : ""}</span>${geriVar ? `<button class="ghost" data-notgeri="${esc(k.id)}">Geri al</button>` : ""}</div>`;
+      }).join("")
     : '<div class="muted">Tamamlanan yok.</div>';
+  bildirimDurumYaz();
 }
 document.addEventListener("click", e=>{
   const b = e.target.closest("[data-notgeri]"); if (!b) return;
@@ -1456,9 +1495,24 @@ document.getElementById("nEkle").onclick = ()=>{
   document.getElementById("nMetin").value = ""; document.getElementById("nTarih").value = ""; document.getElementById("nSaat").value = "";
   kaydet(); renderAll(); toast("Eklendi");
 };
+function bildirimDurumYaz(){
+  const el = document.getElementById("bildirimNot"); if (!el) return;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const ana = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  if (!("Notification" in window)){
+    el.textContent = ios && !ana
+      ? "iPhone'da bildirim için: Safari'de Paylaş → Ana Ekrana Ekle. Sonra ana ekrandaki KKB AJANDA simgesinden açın."
+      : "Bu tarayıcı bildirimleri desteklemiyor.";
+    return;
+  }
+  el.textContent = Notification.permission === "granted" ? "Bildirimler açık."
+    : Notification.permission === "denied" ? "Bildirimler engellenmiş. Telefon ayarlarından izin verin."
+    : "Bildirimler kapalı. Butona basıp izin verin.";
+}
 document.getElementById("bildirimBtn").onclick = ()=>{
-  if (!("Notification" in window)) return toast("Bu tarayıcı bildirimleri desteklemiyor");
-  Notification.requestPermission().then(p=>toast(p==="granted" ? "Bildirimler açık" : "Bildirim izni verilmedi"));
+  if (!("Notification" in window)){ bildirimDurumYaz(); return toast("Bildirim için uygulamayı ana ekrana ekleyin"); }
+  Notification.requestPermission().then(p=>{ toast(p==="granted" ? "Bildirimler açık" : "Bildirim izni verilmedi"); bildirimDurumYaz(); });
+
 };
 function alarmKontrol(){
   const now = new Date(); let degisti = false;
@@ -1612,6 +1666,8 @@ function sktYukle(text, sessiz){
   db.skt = {rows, son: Date.now()};
   kaydet(); renderAll(); if (!sessiz) toast(rows.length+" teşhir kaydı yüklendi"); return true;
 }
+document.getElementById("sktGunSec").addEventListener("change", ()=>sktRender());
+document.getElementById("sktGunTemizle").onclick = ()=>{ document.getElementById("sktGunSec").value = ""; sktRender(); };
 function sktRender(){
   const now = new Date(), nowMs = now.getTime();
   const rows = ((db.skt && db.skt.rows) || []).map(r=>{
@@ -1619,15 +1675,17 @@ function sktRender(){
     return {...r, saat, ms: new Date(r.skt+"T"+saat+":00").getTime()};
   });
   const tb = document.getElementById("sktTable");
+  const gunEl = document.getElementById("sktGunSec");
+  const gun = gunEl ? gunEl.value : "";
   if (tb){
-    const liste = rows.filter(r=>r.ms >= nowMs - 7*86400000).sort((a,b)=>a.ms-b.ms);
+    const liste = (gun ? rows.filter(r=>r.kayit===gun) : rows.filter(r=>r.ms >= nowMs - 7*86400000)).sort((a,b)=>a.ms-b.ms);
     tb.innerHTML = liste.length
-      ? "<tr><th>Ürün</th><th>Miktar</th><th>Çıkaran</th><th>SKT (gün · saat)</th><th>Durum</th></tr>" + liste.map(r=>{
+      ? "<tr><th>Ürün</th><th>Miktar</th><th>Çıkaran</th><th>Çıkarıldı</th><th>SKT (gün · saat)</th><th>Durum</th></tr>" + liste.map(r=>{
           const kalanMs = r.ms - nowMs;
           const [etiket, sinif] = kalanMs <= 0 ? ["Süresi doldu","red"] : [kalan(kalanMs), kalanMs <= 3*86400000 ? "yel" : "grn"];
-          return `<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.adet)}</td><td>${esc(r.kaydeden)}</td><td>${fmtDT(r.ms)}</td><td><span class="tag ${sinif}">${etiket}</span></td></tr>`;
+          return `<tr><td class="l"><b>${esc(r.urun)}</b></td><td>${esc(r.adet)}</td><td>${esc(r.kaydeden)}</td><td>${fmtTarih(r.kayit)}</td><td>${fmtDT(r.ms)}</td><td><span class="tag ${sinif}">${etiket}</span></td></tr>`;
         }).join("")
-      : "<tr><td>Kayıt yok.</td></tr>";
+      : `<tr><td>${gun ? "Bu gün pasta çıkarılmamış." : "Kayıt yok."}</td></tr>`;
   }
   const pastaEl = document.getElementById("sktPasta");
   if (pastaEl){
@@ -1686,7 +1744,7 @@ function teslimEksikler(){
 function teslimMetni(){
   return "⚠️ Espresso makineleri · " + bugunStr() + "\nTeslim alınmayan makineler:\n" + teslimEksikler().map(x=>"- "+x).join("\n") + "\n\nArkadaşlar makineleri teslim almamışsınız, lütfen teslim alın.";
 }
-const SIPARIS_KONTROL_DK = 13*60 + 30;
+const SIPARIS_KONTROL_DK = 12*60;
 let gelmediBildirildi = "";
 // Bugün gelmesi beklenen kalemler:
 //  - Geliş günü bugün olan siparişler
@@ -1712,7 +1770,7 @@ function gelenDurumlari(){
   return kalemler.map(k=>{
     const e0 = db.gelenManuel[k.key];
     const elle = (e0==="geldi" || e0==="gelmedi") ? e0 : null;
-    const otomatik = (!girisVar && nm >= SIPARIS_KONTROL_DK) ? "gelmedi" : "bekleniyor";
+    const otomatik = girisVar ? "geldi" : (nm >= SIPARIS_KONTROL_DK ? "gelmedi" : "bekleniyor");
     return {t:k.t, key:k.key, durum: elle || otomatik, elle: !!elle, siparisler: k.siparisler};
   });
 }
@@ -2225,12 +2283,23 @@ function depoYukle(text, sessiz){
   db.depo = {rows, son: Date.now()};
   kaydet(); renderAll(); if (!sessiz) toast(rows.length+" depo kaydı yüklendi"); return true;
 }
+var depoVurgu = null;
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-depogit]"); if (!b) return;
+  const t = Number(b.dataset.depogit);
+  const r = ((db.depo && db.depo.rows) || []).find(x=>x.t===t); if (!r) return;
+  depoVurgu = t;
+  document.getElementById("depoAy").value = r.tarih.slice(0,7);
+  showTab("depo");
+  const el = document.querySelector(`[data-dt="${t}"]`);
+  if (el){ const d = el.closest("details"); if (d) d.open = true; el.scrollIntoView({block:"center"}); }
+});
 function depoRender(){
   const el = document.getElementById("depoBugun"); if (!el) return;
   const bug = iso(new Date());
   const bugun = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih===bug).sort((a,b)=>b.t-a.t);
   const giris = bugun.filter(r=>r.tur==="GİRİŞ"), cikis = bugun.filter(r=>r.tur==="ÇIKIŞ");
-  const satir = r=>`<div class="row"><b>${esc(r.depo)}</b><span class="muted">${esc(r.personel)} · ${r.saat}</span></div>`;
+  const satir = r=>`<div class="row"><b>${esc(r.depo)}</b><span class="muted">${esc(r.personel)} · ${r.saat}</span><button class="ghost" data-depogit="${r.t}">Git</button></div>`;
   let h = '<div class="grp">Giriş</div>' + (giris.length ? giris.map(satir).join("") : '<div class="muted">Yok</div>');
   h += '<div class="grp">Çıkış</div>' + (cikis.length ? cikis.map(satir).join("") : '<div class="muted">Yok</div>');
   if (!cikis.length && new Date().getHours() >= DEPO_UYARI_SAAT){
@@ -2248,7 +2317,7 @@ function depoTabloRender(){
   document.getElementById("depoOzet").textContent = ayEtiket(ay) + " · Kayıt: " + rows.length + " · Giriş: " + rows.filter(r=>r.tur==="GİRİŞ").length + " · Çıkış: " + rows.filter(r=>r.tur==="ÇIKIŞ").length;
   el.innerHTML = rows.length
     ? "<tr><th>Tarih</th><th>Saat</th><th>Personel</th><th>Depo</th><th>İşlem</th><th>Mal</th></tr>" +
-      rows.map(r=>`<tr><td>${fmtTarih(r.tarih)}</td><td>${r.saat}</td><td class="l">${esc(r.personel)}</td><td>${esc(r.depo)}</td><td>${r.tur}</td><td class="l wrap">${esc(r.icerik)}</td></tr>`).join("")
+      rows.map(r=>`<tr data-dt="${r.t}" class="${r.t===depoVurgu?"vurgu":""}"><td>${fmtTarih(r.tarih)}</td><td>${r.saat}</td><td class="l">${esc(r.personel)}</td><td>${esc(r.depo)}</td><td>${r.tur}</td><td class="l wrap">${esc(r.icerik)}</td></tr>`).join("")
     : "<tr><td>Bu ay kayıt yok.</td></tr>";
 }
 document.getElementById("depoAy").addEventListener("change", depoTabloRender);

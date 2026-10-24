@@ -164,6 +164,7 @@
   <button data-tab="jimbo">Espresso Makineleri</button>
   <button data-tab="depo">Depo</button>
   <button data-tab="toptan">Toptancılar</button>
+  <button data-tab="maliyet">Maliyet</button>
   <button data-tab="bakim">Bakım</button>
   <button data-tab="notlar">Notlar</button>
   <button data-tab="mesaj">WhatsApp</button>
@@ -183,7 +184,7 @@
     <div class="card"><div class="kart-baslik"><h2>Vardiya Takip Durumu</h2><input type="date" class="field tarih-secici" id="vardiyaTarih" aria-label="Tarih seç"></div><div id="girisOzet"></div></div>
     <div class="card"><h2>Espresso Makineleri</h2><div class="muted" id="jimboTarih"></div><div id="jimboBugun"></div></div>
     <div class="card"><h2>Anımsatıcı</h2><div id="yaklasanList"></div></div>
-    <div class="card"><h2>Teşhir Dolabı · Pasta</h2><div id="sktPasta"></div></div>
+    <div class="card"><div class="kart-baslik"><h2>Teşhir Dolabı · Pasta</h2><input type="date" class="field tarih-secici" id="pastaTarih" aria-label="Tarih seç"></div><div id="sktPasta"></div></div>
     <div class="card"><h2>Depo Takip</h2><div id="depoBugun"></div></div>
     <div class="card"><h2>Kapanış Görevleri</h2>
       <div class="toolbar"><select class="field" id="kapanisGunSec"></select></div>
@@ -397,6 +398,23 @@
     </div>
   </section>
 
+  <!-- MALİYET -->
+  <section id="tab-maliyet" class="hidden">
+    <div class="card">
+      <div class="kart-baslik"><h2>Maliyet ve Kâr</h2><span class="muted" id="maliyetTarih" style="white-space:nowrap"></span></div>
+      <details><summary>Excel yükle (.xlsx)</summary>
+        <input type="file" id="maliyetDosya" accept=".xlsx,.xls" style="margin-top:8px">
+        <p class="muted" style="margin:6px 0 0">Dosya telefonunuzda okunur, hiçbir yere gönderilmez.</p>
+      </details>
+    </div>
+    <div class="card">
+      <div class="toolbar"><button id="maliyetUrunSekme">Ürünler</button><button class="ghost" id="maliyetHamSekme">Hammadde</button></div>
+      <input class="field" id="maliyetAra" placeholder="Ürün veya hammadde ara">
+      <p class="muted" id="maliyetOzet"></p>
+      <div class="scroll"><table id="maliyetTablo"></table></div>
+    </div>
+  </section>
+
   <!-- BAKIM -->
   <section id="tab-bakim" class="hidden">
     <div class="card">
@@ -467,11 +485,8 @@
       <a id="waLink" href="#" target="_blank" style="text-decoration:none"><button>WhatsApp'ta Aç</button></a>
     </div>
     <div class="card">
-      <h2>Konum Gönder</h2>
-      <div class="toolbar">
-        <button id="konumGoogle">Google Haritalar</button>
-        <button class="ghost" id="konumApple">Apple Haritalar</button>
-      </div>
+      <h2>Açık Adres</h2>
+      <div id="konumListe"></div>
     </div>
     <div class="card">
       <h2>Kaşe Bilgileri</h2>
@@ -503,6 +518,7 @@
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const GUN_AD = ["PAZARTESİ","SALI","ÇARŞAMBA","PERŞEMBE","CUMA","CUMARTESİ","PAZAR"];
 const GUN_KISA = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
@@ -1255,6 +1271,74 @@ document.addEventListener("click", e=>{
   }
 });
 
+// ---- Maliyet (Excel) ----
+var maliyetSekme = "urun";
+function maliyetNum(v){ return typeof v === "number" && isFinite(v) ? v : 0; }
+function maliyetIso(d){ return d instanceof Date ? iso(d) : null; }
+function maliyetOku(buf){
+  const wb = XLSX.read(buf, {type:"array", cellDates:true});
+  const ur = wb.Sheets["ÜRÜN REÇETE"], hm = wb.Sheets["HAMMADDE"];
+  if (!ur || !hm) throw new Error("Excel'de 'ÜRÜN REÇETE' ve 'HAMMADDE' sayfaları bulunamadı");
+  // Ürün reçetesi: 4 sütunluk 10 hammadde bloğu (ad, miktar, birim, birim fiyat) sonrası maliyet ve satış sütunları
+  const urunler = [];
+  XLSX.utils.sheet_to_json(ur, {header:1, defval:null}).slice(1).forEach(r=>{
+    const ad = typeof r[3] === "string" ? r[3].trim() : "";
+    if (!ad) return;
+    let maliyet = 0;
+    for (let k=0; k<10; k++) maliyet += maliyetNum(r[5+4*k]) * maliyetNum(r[7+4*k]);
+    const satisDahil = maliyetNum(r[46]);
+    const satisHaric = maliyetNum(r[45]) || satisDahil/1.1;
+    const kar = satisHaric - maliyet;
+    urunler.push({ad, grup:String(r[2]||"").trim(), maliyet, satisHaric, satisDahil, kar, oran: maliyet>0 ? kar/maliyet : null});
+  });
+  // Hammadde fiyat listesi: aynı hammaddeden en yeni kayıt
+  const ham = {};
+  XLSX.utils.sheet_to_json(hm, {header:1, defval:null}).slice(1).forEach(r=>{
+    const ad = typeof r[2] === "string" ? r[2].trim() : "";
+    if (!ad || ad === "0") return;
+    const tarih = maliyetIso(r[7]);
+    const kayit = {ad, toptanci:String(r[0]||"").trim(), birim:String(r[4]||"").trim(), fiyat:maliyetNum(r[6]), tarih};
+    if (!ham[ad] || (kayit.tarih||"") >= (ham[ad].tarih||"")) ham[ad] = kayit;
+  });
+  return {tarih: iso(new Date()), urunler, hammadde: Object.values(ham)};
+}
+function para(x){ return (Math.round((x||0)*100)/100).toLocaleString("tr-TR",{minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺"; }
+document.getElementById("maliyetDosya").addEventListener("change", async e=>{
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  try {
+    db.maliyet = maliyetOku(await f.arrayBuffer());
+    kaydet(); renderAll(); toast(db.maliyet.urunler.length + " ürün, " + db.maliyet.hammadde.length + " hammadde yüklendi");
+  } catch(err){ toast("Excel okunamadı: " + err.message); }
+  e.target.value = "";
+});
+document.getElementById("maliyetUrunSekme").onclick = ()=>{ maliyetSekme = "urun"; maliyetRender(); };
+document.getElementById("maliyetHamSekme").onclick = ()=>{ maliyetSekme = "ham"; maliyetRender(); };
+document.getElementById("maliyetAra").addEventListener("input", maliyetRender);
+function maliyetRender(){
+  const m = db.maliyet;
+  document.getElementById("maliyetTarih").textContent = m ? "Hesaplama: " + fmtTarih(m.tarih) : "Excel yüklenmedi";
+  document.getElementById("maliyetUrunSekme").className = maliyetSekme === "urun" ? "" : "ghost";
+  document.getElementById("maliyetHamSekme").className = maliyetSekme === "ham" ? "" : "ghost";
+  const tb = document.getElementById("maliyetTablo"), ozet = document.getElementById("maliyetOzet");
+  if (!m){ tb.innerHTML = ""; ozet.textContent = "Maliyet tablosunu (.xlsx) yükleyin."; return; }
+  const q = up(document.getElementById("maliyetAra").value);
+  if (maliyetSekme === "urun"){
+    const liste = m.urunler.filter(u=>!q || up(u.ad + " " + u.grup).includes(q)).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+    ozet.textContent = liste.length + " ürün";
+    tb.innerHTML = liste.length
+      ? "<tr><th>Ürün</th><th>Grup</th><th>Maliyet</th><th>Satış (KDV hariç)</th><th>Satış (KDV dahil)</th><th>Kâr / zarar</th><th>Oran</th></tr>" +
+        liste.map(u=>`<tr><td class="l"><b>${esc(u.ad)}</b></td><td>${esc(u.grup)}</td><td>${para(u.maliyet)}</td><td>${para(u.satisHaric)}</td><td>${para(u.satisDahil)}</td><td><span class="tag ${u.kar < 0 ? "red" : "grn"}">${para(u.kar)}</span></td><td>${u.oran == null ? "—" : "%" + Math.round(u.oran*100)}</td></tr>`).join("")
+      : "<tr><td>Sonuç yok.</td></tr>";
+  } else {
+    const liste = m.hammadde.filter(h=>!q || up(h.ad + " " + h.toptanci).includes(q)).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+    ozet.textContent = liste.length + " hammadde";
+    tb.innerHTML = liste.length
+      ? "<tr><th>Hammadde</th><th>Toptancı</th><th>Birim</th><th>Reçete birim fiyatı</th><th>Güncelleme</th></tr>" +
+        liste.map(h=>`<tr><td class="l"><b>${esc(h.ad)}</b></td><td>${esc(h.toptanci)}</td><td>${esc(h.birim)}</td><td>${para(h.fiyat)}</td><td>${h.tarih ? fmtTarih(h.tarih) : "—"}</td></tr>`).join("")
+      : "<tr><td>Sonuç yok.</td></tr>";
+  }
+}
+
 // ---- Kapanış görevleri ----
 // Kapanış personeli: haftalık programda 16:30–17:30 başlayıp 01:00–03:00 biten vardiya. Barış hiçbir zaman dahil edilmez.
 // Meydan temizliği: istasyon tablosunda MEYDAN yazan kapanış personeli (Zeynep kapanışta ise o).
@@ -1668,6 +1752,7 @@ function sktYukle(text, sessiz){
 }
 document.getElementById("sktGunSec").addEventListener("change", ()=>sktRender());
 document.getElementById("sktGunTemizle").onclick = ()=>{ document.getElementById("sktGunSec").value = ""; sktRender(); };
+document.getElementById("pastaTarih").addEventListener("change", ()=>sktRender());
 function sktRender(){
   const now = new Date(), nowMs = now.getTime();
   const rows = ((db.skt && db.skt.rows) || []).map(r=>{
@@ -1688,12 +1773,17 @@ function sktRender(){
       : `<tr><td>${gun ? "Bu gün pasta çıkarılmamış." : "Kayıt yok."}</td></tr>`;
   }
   const pastaEl = document.getElementById("sktPasta");
+  const pastaTarih = document.getElementById("pastaTarih");
+  if (pastaTarih && !pastaTarih.value) pastaTarih.value = iso(now);
+  const pGun = pastaTarih ? pastaTarih.value : iso(now);
   if (pastaEl){
-    const o = rows.filter(r=>r.kayit===iso(now));
+    const o = rows.filter(r=>r.kayit===pGun);
+    const bugunMu = pGun === iso(now);
+    const onek = bugunMu ? "" : fmtTarih(pGun) + " · ";
     pastaEl.innerHTML = o.length
-      ? `<div class="durum ok"><span class="ikon">✓</span><div><b>Pasta çıkarıldı</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))}</div></div></div>`
-      : '<div class="durum no"><span class="ikon">✗</span><div><b>Bugün pasta çıkarılmadı</b></div></div>';
-    pastaEl.innerHTML += uyariBtn("skt", "SKT dolanları WhatsApp'a gönder");
+      ? `<div class="durum ok"><span class="ikon">✓</span><div><b>${onek}Pasta çıkarıldı</b><div class="muted">${esc([...new Set(o.map(r=>r.kaydeden))].join(", "))}</div></div></div>`
+      : `<div class="durum no"><span class="ikon">✗</span><div><b>${bugunMu ? "Bugün" : fmtTarih(pGun)} pasta çıkarılmadı</b></div></div>`;
+    if (bugunMu) pastaEl.innerHTML += uyariBtn("skt", "SKT dolanları WhatsApp'a gönder");
   }
 }
 function sktUyariMetni(){
@@ -1886,8 +1976,16 @@ const KONUM_GOOGLE = "https://www.google.com/maps/search/?api=1&query=" + encode
 const KONUM_APPLE = "https://maps.apple.com/?q=" + encodeURIComponent(KONUM_AD + ", " + KONUM_ADRES);
 const KASE = "BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT\nSANAYİ VE TİCARET LİMİTED ŞİRKETİ\nTABAKLAR MAH. DR. RÜSTÜ ÖZÜT CAD. ISMAIL HAKKI ATIS IS MERKEZI No:6\n16700 KARACABEY/ Bursa\nWeb Sitesi: belkarltd.com.tr\nE-Posta: belkarsirketi16@gmail.com\nTel: 0224 676 66 02\nVergi Dairesi: KARACABEY VERGİ DAİRESİ\nVKN: 1630417026";
 function waGonder(metin){ window.open("https://wa.me/?text="+encodeURIComponent(metin), "_blank"); }
-document.getElementById("konumGoogle").onclick = ()=>waGonder(KONUM_AD+"\n"+KONUM_ADRES+"\n"+KONUM_GOOGLE);
-document.getElementById("konumApple").onclick = ()=>waGonder(KONUM_AD+"\n"+KONUM_ADRES+"\n"+KONUM_APPLE);
+const ACIK_ADRES = "Canbalı Mahallesi, Bursa Caddesi Atatürk Kültür Parkı, Ergün Koç Kültür Merkezi, No:176/1 Kent Kafe, 16700 Karacabey/Bursa";
+const ACIK_ADRES_HARITA = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("Kent Kafe, " + ACIK_ADRES);
+document.getElementById("konumListe").innerHTML =
+  `<div class="muted" style="font-size:16px;color:var(--metin, inherit);line-height:1.5;margin-bottom:10px">${esc(ACIK_ADRES)}</div>` +
+  `<div class="trow-btn"><button data-konum="wa">WhatsApp'tan gönder</button><a class="btn ghost" href="${ACIK_ADRES_HARITA}" target="_blank" style="text-decoration:none">Haritada aç</a><button class="ghost" data-konum="kopya">Kopyala</button></div>`;
+document.getElementById("konumListe").addEventListener("click", e=>{
+  const b = e.target.closest("[data-konum]"); if (!b) return;
+  const metin = "Kent Kafe · Açık adres\n" + ACIK_ADRES + "\n" + ACIK_ADRES_HARITA;
+  if (b.dataset.konum === "wa") waGonder(metin); else copyText(metin);
+});
 document.getElementById("kaseGonder").onclick = ()=>waGonder(KASE);
 document.getElementById("kaseKopya").onclick = ()=>copyText(KASE);
 document.getElementById("kaseMetin").textContent = KASE;
@@ -2330,7 +2428,7 @@ document.getElementById("depoYukle").onclick = ()=>{
 };
 
 // ---- Başlat ----
-function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); vardiyaRender(); jimboRender(); jimboTabloRender(); cihazRender(); depoRender(); depoTabloRender(); tabloKur(); yedekHatirlatRender(); istArsivRender(); kapanisRender(); }
+function renderAll(){ bugunRender(); programRender(); girisRender(); istasyonRender(); toptanRender(); bakimRender(); notRender(); vardiyaRender(); jimboRender(); jimboTabloRender(); cihazRender(); depoRender(); depoTabloRender(); tabloKur(); yedekHatirlatRender(); istArsivRender(); kapanisRender(); maliyetRender(); }
 renderAll();
 havaCek();
 alarmKontrol();

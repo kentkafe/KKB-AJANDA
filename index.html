@@ -410,6 +410,7 @@
     <div class="card">
       <div class="toolbar"><button id="maliyetUrunSekme">Ürünler</button><button class="ghost" id="maliyetHamSekme">Hammadde</button></div>
       <input class="field" id="maliyetAra" placeholder="Ürün veya hammadde ara">
+      <div class="toolbar"><select class="field" id="maliyetGrup" aria-label="Filtre"></select><select class="field" id="maliyetSirala" aria-label="Sıralama"></select></div>
       <p class="muted" id="maliyetOzet"></p>
       <div class="scroll"><table id="maliyetTablo"></table></div>
     </div>
@@ -1284,12 +1285,13 @@ function maliyetOku(buf){
   XLSX.utils.sheet_to_json(ur, {header:1, defval:null}).slice(1).forEach(r=>{
     const ad = typeof r[3] === "string" ? r[3].trim() : "";
     if (!ad) return;
-    let maliyet = 0;
-    for (let k=0; k<10; k++) maliyet += maliyetNum(r[5+4*k]) * maliyetNum(r[7+4*k]);
+    const recete = [];
+    for (let k=0; k<10; k++){
+      const hAd = r[4+4*k];
+      if (typeof hAd === "string" && hAd.trim()) recete.push({ad:hAd.trim(), miktar:maliyetNum(r[5+4*k]), birim:String(r[6+4*k]||"").trim(), fiyat:maliyetNum(r[7+4*k])});
+    }
     const satisDahil = maliyetNum(r[46]);
-    const satisHaric = maliyetNum(r[45]) || satisDahil/1.1;
-    const kar = satisHaric - maliyet;
-    urunler.push({ad, grup:String(r[2]||"").trim(), maliyet, satisHaric, satisDahil, kar, oran: maliyet>0 ? kar/maliyet : null});
+    urunler.push({ad, grup:String(r[2]||"").trim(), recete, orijinal: JSON.parse(JSON.stringify(recete)), satisDahil, ...maliyetHesapla(recete, satisDahil)});
   });
   // Hammadde fiyat listesi: aynı hammaddeden en yeni kayıt
   const ham = {};
@@ -1314,6 +1316,34 @@ document.getElementById("maliyetDosya").addEventListener("change", async e=>{
 document.getElementById("maliyetUrunSekme").onclick = ()=>{ maliyetSekme = "urun"; maliyetRender(); };
 document.getElementById("maliyetHamSekme").onclick = ()=>{ maliyetSekme = "ham"; maliyetRender(); };
 document.getElementById("maliyetAra").addEventListener("input", maliyetRender);
+var maliyetSiraDeger = "ad:1";
+const URUN_SIRA = [["ad:1","Ada göre (A-Z)"],["ad:-1","Ada göre (Z-A)"],["grup:1","Kategoriye göre (A-Z)"],["maliyet:1","Maliyet (ucuzdan pahalıya)"],["maliyet:-1","Maliyet (pahalıdan ucuza)"],["satisDahil:1","Satış fiyatı (düşükten yükseğe)"],["satisDahil:-1","Satış fiyatı (yüksekten düşüğe)"],["kar:-1","Kâr (yüksekten düşüğe)"],["kar:1","Zarar ve düşük kâr önce"],["oran:-1","Kâr oranı (yüksekten düşüğe)"]];
+const HAM_SIRA = [["ad:1","Ada göre (A-Z)"],["ad:-1","Ada göre (Z-A)"],["toptanci:1","Toptancıya göre (A-Z)"],["fiyat:1","Fiyat (ucuzdan pahalıya)"],["fiyat:-1","Fiyat (pahalıdan ucuza)"],["tarih:-1","Güncelleme (en yeni)"],["tarih:1","Güncelleme (en eski)"]];
+const MALIYET_METIN = ["ad","grup","toptanci","birim","tarih"];
+function maliyetSirala(liste, alan, yon){
+  return liste.slice().sort((a,b)=>{
+    const x = a[alan], y = b[alan];
+    let c;
+    if (MALIYET_METIN.includes(alan)) c = String(x||"").localeCompare(String(y||""), "tr");
+    else { const nx = x==null ? -1e18 : x, ny = y==null ? -1e18 : y; c = nx===ny ? 0 : (nx < ny ? -1 : 1); }
+    if (c === 0) c = a.ad.localeCompare(b.ad, "tr");
+    return c * yon;
+  });
+}
+function maliyetSecenekYaz(m){
+  const sirS = document.getElementById("maliyetSirala"), grupS = document.getElementById("maliyetGrup");
+  const sirListe = maliyetSekme === "urun" ? URUN_SIRA : HAM_SIRA;
+  if (!sirListe.some(x=>x[0]===maliyetSiraDeger)) maliyetSiraDeger = sirListe[0][0];
+  sirS.innerHTML = sirListe.map(([v,t])=>`<option value="${v}">${t}</option>`).join("");
+  sirS.value = maliyetSiraDeger;
+  const eskiG = grupS.value;
+  const degerler = maliyetSekme === "urun"
+    ? [...new Set(m.urunler.map(u=>u.grup).filter(Boolean))]
+    : [...new Set(m.hammadde.map(h=>h.toptanci).filter(Boolean))];
+  degerler.sort((a,b)=>a.localeCompare(b,"tr"));
+  grupS.innerHTML = `<option value="">${maliyetSekme === "urun" ? "Tüm gruplar" : "Tüm toptancılar"}</option>` + degerler.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join("");
+  grupS.value = degerler.includes(eskiG) ? eskiG : "";
+}
 function maliyetRender(){
   const m = db.maliyet;
   document.getElementById("maliyetTarih").textContent = m ? "Hesaplama: " + fmtTarih(m.tarih) : "Excel yüklenmedi";
@@ -1321,23 +1351,125 @@ function maliyetRender(){
   document.getElementById("maliyetHamSekme").className = maliyetSekme === "ham" ? "" : "ghost";
   const tb = document.getElementById("maliyetTablo"), ozet = document.getElementById("maliyetOzet");
   if (!m){ tb.innerHTML = ""; ozet.textContent = "Maliyet tablosunu (.xlsx) yükleyin."; return; }
+  maliyetSecenekYaz(m);
   const q = up(document.getElementById("maliyetAra").value);
+  const grup = document.getElementById("maliyetGrup").value;
+  const [alan, yonS] = maliyetSiraDeger.split(":"), yon = Number(yonS);
+  const ok = (metin)=>!q || up(metin).includes(q);
+  const ok2 = (grupDeger)=>!grup || grupDeger === grup;
   if (maliyetSekme === "urun"){
-    const liste = m.urunler.filter(u=>!q || up(u.ad + " " + u.grup).includes(q)).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+    const liste = maliyetSirala(m.urunler.filter(u=>ok(u.ad + " " + u.grup) && ok2(u.grup)), alan, yon);
+    const basl = [["ad","Ürün"],["grup","Grup"],["maliyet","Maliyet"],["satisHaric","Satış (KDV hariç)"],["satisDahil","Satış (KDV dahil)"],["kar","Kâr / zarar"],["oran","Oran"]];
     ozet.textContent = liste.length + " ürün";
     tb.innerHTML = liste.length
-      ? "<tr><th>Ürün</th><th>Grup</th><th>Maliyet</th><th>Satış (KDV hariç)</th><th>Satış (KDV dahil)</th><th>Kâr / zarar</th><th>Oran</th></tr>" +
-        liste.map(u=>`<tr><td class="l"><b>${esc(u.ad)}</b></td><td>${esc(u.grup)}</td><td>${para(u.maliyet)}</td><td>${para(u.satisHaric)}</td><td>${para(u.satisDahil)}</td><td><span class="tag ${u.kar < 0 ? "red" : "grn"}">${para(u.kar)}</span></td><td>${u.oran == null ? "—" : "%" + Math.round(u.oran*100)}</td></tr>`).join("")
+      ? "<tr>" + basl.map(([k,t])=>`<th data-sirala="${k}" style="cursor:pointer">${t}${alan===k ? (yon>0 ? " ▲" : " ▼") : ""}</th>`).join("") + "<th></th></tr>" +
+        liste.map(u=>`<tr><td class="l"><b>${esc(u.ad)}</b></td><td>${esc(u.grup)}</td><td>${para(u.maliyet)}</td><td>${para(u.satisHaric)}</td><td>${para(u.satisDahil)}</td><td><span class="tag ${u.kar < 0 ? "red" : "grn"}">${para(u.kar)}</span></td><td>${u.oran == null ? "—" : "%" + Math.round(u.oran*100)}</td><td><button class="ghost" data-urun-recete="${esc(u.ad)}">Reçete</button>${u.degisti ? ' <span class="tag yel">Düzenlendi</span>' : ""}</td></tr>`).join("")
       : "<tr><td>Sonuç yok.</td></tr>";
   } else {
-    const liste = m.hammadde.filter(h=>!q || up(h.ad + " " + h.toptanci).includes(q)).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+    const liste = maliyetSirala(m.hammadde.filter(h=>ok(h.ad + " " + h.toptanci) && ok2(h.toptanci)), alan, yon);
+    const basl = [["ad","Hammadde"],["toptanci","Toptancı"],["birim","Birim"],["fiyat","Reçete birim fiyatı"],["tarih","Güncelleme"]];
     ozet.textContent = liste.length + " hammadde";
     tb.innerHTML = liste.length
-      ? "<tr><th>Hammadde</th><th>Toptancı</th><th>Birim</th><th>Reçete birim fiyatı</th><th>Güncelleme</th></tr>" +
+      ? "<tr>" + basl.map(([k,t])=>`<th data-sirala="${k}" style="cursor:pointer">${t}${alan===k ? (yon>0 ? " ▲" : " ▼") : ""}</th>`).join("") + "</tr>" +
         liste.map(h=>`<tr><td class="l"><b>${esc(h.ad)}</b></td><td>${esc(h.toptanci)}</td><td>${esc(h.birim)}</td><td>${para(h.fiyat)}</td><td>${h.tarih ? fmtTarih(h.tarih) : "—"}</td></tr>`).join("")
       : "<tr><td>Sonuç yok.</td></tr>";
   }
 }
+document.getElementById("maliyetGrup").addEventListener("change", maliyetRender);
+document.getElementById("maliyetSirala").addEventListener("change", e=>{ maliyetSiraDeger = e.target.value; maliyetRender(); });
+document.getElementById("maliyetTablo").addEventListener("click", e=>{
+  const th = e.target.closest("[data-sirala]"); if (!th) return;
+  const alan = th.dataset.sirala;
+  const yeniYon = maliyetSiraDeger.split(":")[0] === alan ? -Number(maliyetSiraDeger.split(":")[1]) : 1;
+  maliyetSiraDeger = alan + ":" + yeniYon;
+  maliyetRender();
+});
+
+// ---- Reçete düzenleme (güvenli: onay + Excel'e dönüş) ----
+var receteSayac = 0, receteUrunAd = null;
+function maliyetHesapla(recete, satisDahil){
+  const maliyet = recete.reduce((t,r)=>t + maliyetNum(r.miktar)*maliyetNum(r.fiyat), 0);
+  const satisHaric = (satisDahil||0)/1.1;
+  const kar = satisHaric - maliyet;
+  return {maliyet, satisHaric, satisDahil: satisDahil||0, kar, oran: maliyet > 0 ? kar/maliyet : null};
+}
+function receteSatirHtml(i, r){
+  return `<div class="rsatir" style="border-bottom:1px solid #eef4f0;padding:8px 0">
+    <input class="field" list="hamListesi" data-f="ad${i}" value="${esc(r.ad||"")}" placeholder="Hammadde adı">
+    <div class="toolbar">
+      <input class="field" data-f="mi${i}" value="${r.miktar ?? ""}" inputmode="decimal" placeholder="Miktar" style="max-width:110px">
+      <input class="field" data-f="bi${i}" value="${esc(r.birim||"")}" placeholder="Birim" style="max-width:90px">
+      <input class="field" data-f="fi${i}" value="${r.fiyat ?? ""}" inputmode="decimal" placeholder="Birim fiyat" style="max-width:120px">
+      <button class="ghost" type="button" data-recete="sil">Sil</button>
+    </div></div>`;
+}
+function receteOku(){
+  const satirlar = [];
+  document.querySelectorAll("#receteSatirlar .rsatir").forEach(div=>{
+    const ad = (div.querySelector('[data-f^="ad"]').value || "").trim();
+    if (!ad) return;
+    const num = x => parseFloat(String(x||"").replace(",", ".")) || 0;
+    satirlar.push({ad, miktar: num(div.querySelector('[data-f^="mi"]').value), birim: (div.querySelector('[data-f^="bi"]').value||"").trim(), fiyat: num(div.querySelector('[data-f^="fi"]').value)});
+  });
+  return satirlar;
+}
+function receteOnizle(){
+  const el = document.getElementById("receteYeni"); if (!el) return;
+  const u = db.maliyet && db.maliyet.urunler.find(x=>x.ad===receteUrunAd); if (!u) return;
+  const h = maliyetHesapla(receteOku(), u.satisDahil);
+  el.innerHTML = `Yeni maliyet: <b>${para(h.maliyet)}</b> · Kâr/zarar: <b class="${h.kar < 0 ? "" : ""}">${para(h.kar)}</b>`;
+}
+function receteEditorAc(ad){
+  const m = db.maliyet; const u = m && m.urunler.find(x=>x.ad===ad); if (!u) return;
+  if (!u.recete){ toast("Bu liste eski. Excel'i bir kez yeniden yükleyin."); return; }
+  receteUrunAd = ad;
+  const dl = `<datalist id="hamListesi">${m.hammadde.map(h=>`<option value="${esc(h.ad)}">`).join("")}</datalist>`;
+  openModal("Reçete: " + u.ad, `${dl}
+    <p class="muted" style="margin:0 0 6px">Mevcut maliyet: <b>${para(u.maliyet)}</b></p>
+    <p style="margin:0 0 6px" id="receteYeni"></p>
+    <p class="muted" style="margin:0 0 6px;font-size:13px">Hammadde adını listeden seçerseniz birim fiyat otomatik gelir. Kaydetmeden önce onay sorulur.</p>
+    <div id="receteSatirlar">${u.recete.map((r,i)=>receteSatirHtml(i, r)).join("")}</div>
+    <div class="toolbar"><button class="ghost" type="button" data-recete="ekle">+ Hammadde satırı</button><button class="ghost" type="button" data-recete="excel">Excel'deki reçeteye dön</button></div>`,
+    ()=>receteKaydet(ad), "Kaydet");
+  receteOnizle();
+}
+function receteKaydet(ad){
+  const u = db.maliyet.urunler.find(x=>x.ad===ad); if (!u) return;
+  const yeni = receteOku();
+  if (!yeni.length) return toast("Reçete boş olamaz, değişiklik yapılmadı");
+  const h = maliyetHesapla(yeni, u.satisDahil);
+  if (!confirm(`${u.ad}\n\nMaliyet: ${para(u.maliyet)} → ${para(h.maliyet)}\nKâr/zarar: ${para(u.kar)} → ${para(h.kar)}\n\nReçete değişsin mi?`)) return toast("Değişiklik yapılmadı");
+  Object.assign(u, {recete: yeni}, h, {degisti: iso(new Date())});
+  kaydet(); renderAll(); toast("Reçete güncellendi");
+}
+document.addEventListener("click", e=>{
+  const ac = e.target.closest("[data-urun-recete]");
+  if (ac){ receteEditorAc(ac.dataset.urunRecete); return; }
+  const b = e.target.closest("[data-recete]"); if (!b) return;
+  if (b.dataset.recete === "ekle"){
+    document.getElementById("receteSatirlar").insertAdjacentHTML("beforeend", receteSatirHtml(++receteSayac, {ad:"", miktar:"", birim:"", fiyat:""}));
+  } else if (b.dataset.recete === "sil"){
+    b.closest(".rsatir").remove(); receteOnizle();
+  } else if (b.dataset.recete === "excel"){
+    const u = db.maliyet.urunler.find(x=>x.ad===receteUrunAd); if (!u || !u.orijinal) return;
+    if (!confirm("Reçete Excel'deki haline dönsün mü? Kaydetmeden önce kaydedilmez.")) return;
+    document.getElementById("receteSatirlar").innerHTML = u.orijinal.map((r,i)=>receteSatirHtml(i, r)).join("");
+    receteSayac = 1000 + u.orijinal.length;
+    receteOnizle();
+  }
+});
+document.addEventListener("input", e=>{ if (e.target.closest && e.target.closest("#receteSatirlar")) receteOnizle(); });
+document.addEventListener("change", e=>{
+  const t = e.target;
+  if (!t.closest || !t.closest("#receteSatirlar") || !/^ad/.test(t.dataset.f || "")) return;
+  const i = t.dataset.f.slice(2);
+  const h = db.maliyet.hammadde.find(x=>x.ad === t.value.trim());
+  if (h){
+    document.querySelector(`[data-f="fi${i}"]`).value = h.fiyat;
+    document.querySelector(`[data-f="bi${i}"]`).value = h.birim;
+    receteOnizle();
+  }
+});
 
 // ---- Kapanış görevleri ----
 // Kapanış personeli: haftalık programda 16:30–17:30 başlayıp 01:00–03:00 biten vardiya. Barış hiçbir zaman dahil edilmez.

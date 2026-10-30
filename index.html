@@ -94,31 +94,33 @@
   .row .ghost { margin-left:6px; }
 </style>
 <style>
-  :root:not([data-theme="light"]) { color-scheme:light dark; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --g:#7fd1a4; --g2:#1f7a4a; --gl:#0f1613; --w:#1a2420; --t:#e6eee8; --r:#ff8a80; --y:#f0b35a; --mor:#c4a2ec; }
-    :root:not([data-theme="light"]) body { background:#0f1613; color:#e6eee8; }
-    :root:not([data-theme="light"]) .muted { color:#9bb0a3; }
-    :root:not([data-theme="light"]) .row, :root:not([data-theme="light"]) td, :root:not([data-theme="light"]) th { border-color:#2c3c34; }
-    :root:not([data-theme="light"]) .row { border-bottom-color:#2c3c34; }
-    :root:not([data-theme="light"]) table { background:#1a2420; }
-    :root:not([data-theme="light"]) td.off { background:#4a2623; }
-    :root:not([data-theme="light"]) .vurgu td { background:#4d4316 !important; }
-    :root:not([data-theme="light"]) input, :root:not([data-theme="light"]) select, :root:not([data-theme="light"]) textarea { background:#202c27; color:#e6eee8; border-color:#3a4b43; }
-    :root:not([data-theme="light"]) button.ghost { background:#1a2420; color:#7fd1a4; border-color:#7fd1a4; }
-    :root:not([data-theme="light"]) nav { background:#1a2420; border-bottom-color:#2c3c34; }
-    :root:not([data-theme="light"]) details.kapali > summary { border-bottom-color:#5a4d1d; }
-    :root:not([data-theme="light"]) .menuPanel { background:rgba(0,0,0,.6); }
-  }
-  :root[data-theme="dark"] { color-scheme:dark; --g:#7fd1a4; --g2:#1f7a4a; --gl:#0f1613; --w:#1a2420; --t:#e6eee8; --r:#ff8a80; --y:#f0b35a; --mor:#c4a2ec; }
-  :root[data-theme="dark"] body { background:#0f1613; color:#e6eee8; }
-  :root[data-theme="dark"] .muted { color:#9bb0a3; }
-  :root[data-theme="dark"] .row { border-bottom-color:#2c3c34; }
-  :root[data-theme="dark"] table { background:#1a2420; }
-  :root[data-theme="dark"] td.off { background:#4a2623; }
-  :root[data-theme="dark"] input, :root[data-theme="dark"] select, :root[data-theme="dark"] textarea { background:#202c27; color:#e6eee8; border-color:#3a4b43; }
-  :root[data-theme="dark"] button.ghost { background:#1a2420; color:#7fd1a4; border-color:#7fd1a4; }
-  :root[data-theme="dark"] nav { background:#1a2420; }
+  :root[data-theme="dark"] { color-scheme:dark; --g:#ffffff; --g2:#1f7a4a; --gl:#0b2417; --w:#133a27; --t:#ffffff; --r:#ff9a90; --y:#ffd27a; --mor:#d7beff; }
+  :root[data-theme="dark"] body { background:#0b2417; color:#ffffff; }
+  :root[data-theme="dark"] .muted, :root[data-theme="dark"] .muted * { color:#d3e6da !important; }
+  :root[data-theme="dark"] .row, :root[data-theme="dark"] td, :root[data-theme="dark"] th { border-color:#2f5b44; border-bottom-color:#2f5b44; color:#ffffff; }
+  :root[data-theme="dark"] table { background:#133a27; }
+  :root[data-theme="dark"] input, :root[data-theme="dark"] select, :root[data-theme="dark"] textarea { background:#0f2d1f; color:#ffffff; border-color:#3f7055; }
+  :root[data-theme="dark"] input::placeholder { color:#b7d3c1; }
+  :root[data-theme="dark"] button.ghost { background:#133a27; color:#ffffff; border-color:#9fd6b5; }
+  :root[data-theme="dark"] button.ghost.on, :root[data-theme="dark"] [data-tema].on { background:#1f7a4a; color:#ffffff; }
+  :root[data-theme="dark"] nav { background:#133a27; border-bottom-color:#2f5b44; }
+  :root[data-theme="dark"] nav button { color:#ffffff; }
+  :root[data-theme="dark"] .menuKutu, :root[data-theme="dark"] .modal .card { background:#133a27; color:#ffffff; }
+  :root[data-theme="dark"] .menuPanel { background:rgba(0,0,0,.6); }
+  :root[data-theme="dark"] .tag.red { background:#5b2420; color:#ffd2cc; }
+  :root[data-theme="dark"] .tag.yel { background:#5a4312; color:#ffe39a; }
+  :root[data-theme="dark"] .tag.grn { background:#1d5135; color:#c8f5dc; }
+  :root[data-theme="dark"] .tag.mor { background:#3e2b5e; color:#eadbff; }
+  :root[data-theme="dark"] td.off { background:#5b2420; }
+  :root[data-theme="dark"] td.mor { background:#3e2b5e; }
+  :root[data-theme="dark"] .molada { background:#1d5135; color:#ffffff; }
+  :root[data-theme="dark"] .sw.gunYarin { background:#5a4312; color:#ffffff; }
+  :root[data-theme="dark"] .vurgu td { background:#5a4312 !important; }
+  :root[data-theme="dark"] .durum.ok { background:#1d5135; border-color:#3f8f63; color:#ffffff; }
+  :root[data-theme="dark"] .durum.no { background:#5b2420; border-color:#9b4a42; color:#ffffff; }
+  :root[data-theme="dark"] .kase { background:#0f2d1f; color:#ffffff; }
+  :root[data-theme="dark"] .sw.gunBugun, :root[data-theme="dark"] .sw.gunBugun .muted, :root[data-theme="dark"] .sw.gunBugun b, :root[data-theme="dark"] .notGrup.bugun { color:#ff9a90; }
+  :root[data-theme="dark"] details.kapali > summary { border-bottom-color:#7a6a2a; }
 </style>
 <style>
   :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
@@ -545,6 +547,8 @@
 </div>
 <div id="menu" class="menuPanel hidden">
   <div class="menuKutu">
+    <details class="kapali" style="margin-bottom:12px"><summary>Görünüm: <span id="temaOzet"></span></summary>
+    <div class="chips" style="gap:8px;margin-top:6px"><button class="ghost" data-tema="auto">Telefona göre</button><button class="ghost" data-tema="dark">Gece</button><button class="ghost" data-tema="light">Gündüz</button></div></details>
     <div class="toolbar" style="justify-content:space-between"><b style="color:var(--g)">Bağlantılar</b><button class="ghost" id="menuKapat">Kapat</button></div>
     <div id="menuListe"></div>
     <div class="menuSatir" style="margin-top:12px"><b>Çark</b><div><button id="carkAc">Çarka git</button></div></div>
@@ -563,7 +567,7 @@ const KEY = "kkb-ajanda-v6";
 const ALIAS = {"NAZ":"NAŞİDE","NAŞİDE":"NAZ"};
 const SABLONLAR = [
   "Molalarınızı vaktinde yapın.",
-  "Merhaba, BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT SANAYİ VE TİCARET LİMİTED ŞİRKETİ'nin kurumsal borcu yoktur.",
+  "Merhaba, BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT SANAYİ VE TİCARET LİMİTED ŞİRKETİ'inden ulaşıyorum borcu yoktur yazısı iletebilir misiniz?",
   "Bu haftanın çalışma programı iptal.",
   "Skt kontrolü yapalım, depodaki ürünlere bakalım.",
   "İşe geç kalmayalım arkadaşlar.",
@@ -2583,6 +2587,23 @@ document.getElementById("menuListe").innerHTML = BAGLANTILAR.map((b,i)=>
      <button data-lnk="git" data-i="${i}">Siteye git</button>
      <button class="ghost" data-lnk="paylas" data-i="${i}">Link paylaş</button>
    </div></div>`).join("");
+const TEMA_MQ = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+function temaOku(){ try { return localStorage.getItem("kkb-tema") || "auto"; } catch(e){ return "auto"; } }
+function temaUygula(){
+  const t = temaOku();
+  const koyu = t === "dark" || (t === "auto" && !!(TEMA_MQ && TEMA_MQ.matches));
+  document.documentElement.dataset.theme = koyu ? "dark" : "light";
+  const ozet = document.getElementById("temaOzet");
+  if (ozet) ozet.textContent = ({auto:"Telefona göre", dark:"Gece", light:"Gündüz"})[t] || "Telefona göre";
+  document.querySelectorAll("[data-tema]").forEach(b=>b.classList.toggle("on", b.dataset.tema === t));
+}
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-tema]"); if (!b) return;
+  try { localStorage.setItem("kkb-tema", b.dataset.tema); } catch(err){}
+  temaUygula();
+});
+if (TEMA_MQ){ if (TEMA_MQ.addEventListener) TEMA_MQ.addEventListener("change", temaUygula); else if (TEMA_MQ.addListener) TEMA_MQ.addListener(temaUygula); }
+temaUygula();
 document.getElementById("menuAc").onclick = ()=>document.getElementById("menu").classList.remove("hidden");
 function carkAc(){
   const k = aktifHaftaKey();

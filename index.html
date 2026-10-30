@@ -94,6 +94,33 @@
   .row .ghost { margin-left:6px; }
 </style>
 <style>
+  :root:not([data-theme="light"]) { color-scheme:light dark; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --g:#7fd1a4; --g2:#1f7a4a; --gl:#0f1613; --w:#1a2420; --t:#e6eee8; --r:#ff8a80; --y:#f0b35a; --mor:#c4a2ec; }
+    :root:not([data-theme="light"]) body { background:#0f1613; color:#e6eee8; }
+    :root:not([data-theme="light"]) .muted { color:#9bb0a3; }
+    :root:not([data-theme="light"]) .row, :root:not([data-theme="light"]) td, :root:not([data-theme="light"]) th { border-color:#2c3c34; }
+    :root:not([data-theme="light"]) .row { border-bottom-color:#2c3c34; }
+    :root:not([data-theme="light"]) table { background:#1a2420; }
+    :root:not([data-theme="light"]) td.off { background:#4a2623; }
+    :root:not([data-theme="light"]) .vurgu td { background:#4d4316 !important; }
+    :root:not([data-theme="light"]) input, :root:not([data-theme="light"]) select, :root:not([data-theme="light"]) textarea { background:#202c27; color:#e6eee8; border-color:#3a4b43; }
+    :root:not([data-theme="light"]) button.ghost { background:#1a2420; color:#7fd1a4; border-color:#7fd1a4; }
+    :root:not([data-theme="light"]) nav { background:#1a2420; border-bottom-color:#2c3c34; }
+    :root:not([data-theme="light"]) details.kapali > summary { border-bottom-color:#5a4d1d; }
+    :root:not([data-theme="light"]) .menuPanel { background:rgba(0,0,0,.6); }
+  }
+  :root[data-theme="dark"] { color-scheme:dark; --g:#7fd1a4; --g2:#1f7a4a; --gl:#0f1613; --w:#1a2420; --t:#e6eee8; --r:#ff8a80; --y:#f0b35a; --mor:#c4a2ec; }
+  :root[data-theme="dark"] body { background:#0f1613; color:#e6eee8; }
+  :root[data-theme="dark"] .muted { color:#9bb0a3; }
+  :root[data-theme="dark"] .row { border-bottom-color:#2c3c34; }
+  :root[data-theme="dark"] table { background:#1a2420; }
+  :root[data-theme="dark"] td.off { background:#4a2623; }
+  :root[data-theme="dark"] input, :root[data-theme="dark"] select, :root[data-theme="dark"] textarea { background:#202c27; color:#e6eee8; border-color:#3a4b43; }
+  :root[data-theme="dark"] button.ghost { background:#1a2420; color:#7fd1a4; border-color:#7fd1a4; }
+  :root[data-theme="dark"] nav { background:#1a2420; }
+</style>
+<style>
   :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
   header { background:linear-gradient(135deg,#0a3b22 0%,#0d4a2b 55%,#17663d 100%); border-bottom:2px solid var(--gold); box-shadow:0 2px 12px rgba(0,0,0,.18); }
   header h1 { color:var(--gold2); letter-spacing:3px; text-shadow:0 1px 0 rgba(0,0,0,.3); }
@@ -268,6 +295,7 @@
       <div class="grp">Taksi</div>
       <details><summary id="taksiVarOzet"></summary><div id="taksiVarList"></div></details>
       <details><summary id="taksiYokOzet"></summary><div id="taksiYokList"></div></details>
+      <details><summary id="taksiIstOzet"></summary><div id="taksiIstList"></div></details>
     </div>
     <div class="card">
       <h2>Personel Aylık Tablo</h2>
@@ -449,6 +477,9 @@
       <details class="kapali"><summary>Periyodik Bakımlar</summary>
       <div id="bakimList"></div>
     </details>
+      <details class="kapali"><summary id="bakimYapilmayanOzet">Yapılmayan periyodik bakımlar (0)</summary>
+      <div id="bakimYapilmayanList"></div>
+    </details>
     </div>
   </section>
 
@@ -516,6 +547,7 @@
   <div class="menuKutu">
     <div class="toolbar" style="justify-content:space-between"><b style="color:var(--g)">Bağlantılar</b><button class="ghost" id="menuKapat">Kapat</button></div>
     <div id="menuListe"></div>
+    <div class="menuSatir" style="margin-top:12px"><b>Çark</b><div><button id="carkAc">Çarka git</button></div></div>
   </div>
 </div>
 <div id="toast"></div>
@@ -531,6 +563,7 @@ const KEY = "kkb-ajanda-v6";
 const ALIAS = {"NAZ":"NAŞİDE","NAŞİDE":"NAZ"};
 const SABLONLAR = [
   "Molalarınızı vaktinde yapın.",
+  "Merhaba, BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT SANAYİ VE TİCARET LİMİTED ŞİRKETİ'nin kurumsal borcu yoktur.",
   "Bu haftanın çalışma programı iptal.",
   "Skt kontrolü yapalım, depodaki ürünlere bakalım.",
   "İşe geç kalmayalım arkadaşlar.",
@@ -830,7 +863,7 @@ function geriAl(){
 function yapildi(kind,id){
   const x = bul(kind,id); if (!x) return;
   if (kind==="not"){ db.tamamlananlar = db.tamamlananlar || []; db.tamamlananlar.unshift({id:x.id, metin:x.metin, t:Date.now(), tekrar:x.tekrar}); }
-  if (kind==="bakim"){ x.sonTarih = iso(bugun); toast(x.ad+" bugün yapıldı"); }
+  if (kind==="bakim"){ x.sonTarih = iso(bugun); x.yapilmadi = false; toast(x.ad+" bugün yapıldı"); }
   else if (x.tekrar && x.tekrar!=="yok" && x.tarih){
     const d = dueOf(x);
     if (x.tekrar==="ay") d.setMonth(d.getMonth()+1); else d.setDate(d.getDate()+(x.tekrar==="hafta"?7:1));
@@ -1547,8 +1580,9 @@ document.addEventListener("click", e=>{
 // Kapanış personeli: haftalık programda 16:30–17:30 başlayıp 01:00–03:00 biten vardiya. Barış hiçbir zaman dahil edilmez.
 // Meydan temizliği: istasyon tablosunda MEYDAN yazan kapanış personeli (Zeynep kapanışta ise o).
 // Dağılım: önce elle seçimler, sonra en az o görevi yapana öncelik; dünkü görev tekrarlanmaz; önceki günler sayılır.
-const KAPANIS_GOREVLER_ALL = ["Mal çekme","Temizlik ve bulaşık","Süpürge paspas","Serviste kalma","Meydan temizliği"];
-const KAPANIS_SLOT = {"Mal çekme":2,"Temizlik ve bulaşık":1,"Süpürge paspas":1,"Serviste kalma":1,"Meydan temizliği":1};
+const KAPANIS_GOREVLER_ALL = ["Mal çekme","Temizlik ve bulaşık","Süpürge paspas","Serviste kalma","Meydan temizliği","Kasa"];
+const KAPANIS_KASA = "Kasa";
+const KAPANIS_SLOT = {"Mal çekme":2,"Temizlik ve bulaşık":1,"Süpürge paspas":1,"Serviste kalma":1,"Meydan temizliği":1,"Kasa":1};
 const KAPANIS_OTO_SIRA = ["Mal çekme","Temizlik ve bulaşık","Süpürge paspas","Serviste kalma"];
 const KAPANIS_MEYDAN = "Meydan temizliği";
 const kapanisZeynep = ad => /^ZEYNEP/.test(up(ad));
@@ -1574,7 +1608,13 @@ function kapanisMeydanci(gunIso, kisiler){
   const r = (rows||[]).find(r=>/MEYDAN/.test(up(r.istasyon)) && kisiler.some(ad=>sameName(ad, r.ad)));
   return r ? kisiler.find(ad=>sameName(ad, r.ad)) : null;
 }
-function kapanisAtama(gunIso, kisiler, meydanci, manuel){
+function kapanisKasaci(gunIso, kisiler){
+  const gun = db.istGunler && db.istGunler[gunIso];
+  const rows = gun ? gun.rows : ((gunIso === iso(new Date()) && db.istasyon) ? db.istasyon.rows : []);
+  const r = (rows||[]).find(r=>/KASA/.test(up(r.istasyon)) && kisiler.some(ad=>sameName(ad, r.ad)));
+  return r ? kisiler.find(ad=>sameName(ad, r.ad)) : null;
+}
+function kapanisAtama(gunIso, kisiler, meydanci, manuel, kasaci){
   const mn = manuel || {};
   const atama = {};
   KAPANIS_GOREVLER_ALL.forEach(g=>{ atama[g] = []; });
@@ -1582,6 +1622,8 @@ function kapanisAtama(gunIso, kisiler, meydanci, manuel){
   KAPANIS_GOREVLER_ALL.forEach(g=>{ if (mn[g]) atama[g] = mn[g].filter(ad=>kisiler.includes(ad) && !kapanisBaris(ad)); });
   // 2) Meydan temizliği: elle yoksa istasyondaki meydancı / Zeynep
   if (!mn[KAPANIS_MEYDAN]) atama[KAPANIS_MEYDAN] = meydanci && kisiler.includes(meydanci) ? [meydanci] : [];
+  // 2b) Kasa: istasyonda kasada kim varsa
+  if (!mn[KAPANIS_KASA]) atama[KAPANIS_KASA] = kasaci && kisiler.includes(kasaci) ? [kasaci] : [];
   const yerlesen = new Set(Object.values(atama).flat());
   // 3) Otomatik dağılım: önceki günlere göre adil
   const sayac = {};
@@ -1610,9 +1652,10 @@ function kapanisGun(gunIso){
   db.kapanis = db.kapanis || {gunler:{}};
   const kay = db.kapanis.gunler[gunIso];
   const md = kapanisMeydanci(gunIso, kisiler) || null;
-  if (kay && kay.v===3 && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler) && (kay.meydanci||null)===md) return kay;
+  const kc = kapanisKasaci(gunIso, kisiler) || null;
+  if (kay && kay.v===3 && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler) && (kay.meydanci||null)===md && (kay.kasaci||null)===kc) return kay;
   const manuel = kay ? kay.manuel : undefined;
-  const yeni = {v:3, kisiler, meydanci: md, manuel, atama: kapanisAtama(gunIso, kisiler, md, manuel)};
+  const yeni = {v:3, kisiler, meydanci: md, kasaci: kc, manuel, atama: kapanisAtama(gunIso, kisiler, md, manuel, kc)};
   if (!kay || JSON.stringify(kay)!==JSON.stringify(yeni)){ db.kapanis.gunler[gunIso] = yeni; kaydet(); }
   return db.kapanis.gunler[gunIso];
 }
@@ -1622,7 +1665,7 @@ function kapanisOnay(gunIso, g, ad, isaretli){
   liste = isaretli ? (liste.includes(ad) ? liste : liste.concat([ad])) : liste.filter(x=>x!==ad);
   kay.manuel = kay.manuel || {};
   kay.manuel[g] = liste;
-  kay.atama = kapanisAtama(gunIso, kay.kisiler, kay.meydanci, kay.manuel);
+  kay.atama = kapanisAtama(gunIso, kay.kisiler, kay.meydanci, kay.manuel, kay.kasaci || null);
   kaydet(); renderAll();
 }
 function kapanisMatris(gunIso){
@@ -1695,24 +1738,34 @@ function bakimDurum(b){
   else { etiket=gun+" gün kaldı"; sinif="grn"; }
   return {sonraki, gun, etiket, sinif};
 }
-function swRow(kind, id, bgYazi, icerik, cls){
+function swRow(kind, id, bgYazi, icerik, cls, ekstra){
   return `<div class="sw ${cls||""}" data-kind="${kind}" data-id="${esc(id)}">
     <div class="fg">${icerik}</div>
     <div class="acts-row">
       <button data-act="yapildi" class="ghost">✓ ${bgYazi}</button>
       <button data-act="duzelt" class="ghost">Düzelt</button>
       <button data-act="ertele" class="ghost">Ertele</button>
-      <button data-act="sil" style="background:#b3261e">Sil</button>
+      <button data-act="sil" style="background:#b3261e">Sil</button>${ekstra||""}
     </div></div>`;
 }
 function bakimRender(){
-  document.getElementById("bakimList").innerHTML = db.bakim.length
-    ? db.bakim.map(b=>{ const d = bakimDurum(b);
-        return swRow("bakim", b.id, "Bugün yapıldı",
+  const hepsi = db.bakim.map(b=>({b, d:bakimDurum(b)}));
+  const ana = hepsi.filter(x=>!x.b.yapilmadi);
+  const yapilmayan = hepsi.filter(x=>x.b.yapilmadi);
+  document.getElementById("bakimList").innerHTML = ana.length
+    ? ana.map(({b,d})=> swRow("bakim", b.id, "Bugün yapıldı",
           `<div><b>${esc(b.ad)}</b> <span class="tag ${d.sinif}">${d.etiket}</span>
-           <div class="muted">Her ${b.periyot} ayda · Son: ${fmtTarih(b.sonTarih)} · Sonraki: ${fmtTarih(iso(d.sonraki))}</div>${cihazSatir(b)}</div>`);
-      }).join("")
-    : '<div class="muted">Henüz bakım yok.</div>';
+           <div class="muted">Her ${b.periyot} ayda · Son: ${fmtTarih(b.sonTarih)} · Sonraki: ${fmtTarih(iso(d.sonraki))}</div>${cihazSatir(b)}</div>`,
+          "", d.gun<=0 ? `<button class="ghost" data-bakim-yapilmadi="${esc(b.id)}">Yapılmadı</button>` : "")).join("")
+    : (db.bakim.length ? '<div class="muted">Bekleyen bakım yok.</div>' : '<div class="muted">Henüz bakım yok.</div>');
+  document.getElementById("bakimYapilmayanList").innerHTML = yapilmayan.length
+    ? yapilmayan.map(({b,d})=> swRow("bakim", b.id, "Şimdi yapıldı",
+          `<div><b>${esc(b.ad)}</b> <span class="tag red">${d.etiket}</span>
+           <div class="muted">Son: ${fmtTarih(b.sonTarih)} · Sonraki: ${fmtTarih(iso(d.sonraki))}</div></div>`,
+          "red", `<button class="ghost" data-bakim-geri="${esc(b.id)}">Ana listeye al</button>`)).join("")
+    : '<div class="muted">Yapılmayan periyodik bakım yok.</div>';
+  const yOzet = document.getElementById("bakimYapilmayanOzet");
+  if (yOzet) yOzet.textContent = "Yapılmayan periyodik bakımlar (" + yapilmayan.length + ")";
 }
 document.getElementById("bEkle").onclick = ()=>{
   const cih = db.cihaz.find(x=>String(x.id)===document.getElementById("bCihaz").value);
@@ -1989,6 +2042,7 @@ function sktRender(){
       : `<div class="durum no"><span class="ikon">✗</span><div><b>${bugunMu ? "Bugün" : fmtTarih(pGun)} pasta çıkarılmadı</b></div></div>`;
     if (o.length) pastaEl.innerHTML += `<div class="toolbar" style="margin-top:8px"><button class="ghost" data-skt-git="${pGun}">Git</button></div>`;
     if (bugunMu) pastaEl.innerHTML += uyariBtn("skt", "SKT dolanları WhatsApp'a gönder");
+    if (bugunMu && !o.length) pastaEl.innerHTML += uyariBtn("pastaSoru", "Pasta çıkarılmadı mı? WhatsApp'a sor");
   }
 }
 function sktUyariMetni(){
@@ -2126,8 +2180,12 @@ function kapanisMetni(gunIso){
   }).filter(Boolean);
   return "*Kapanış görevleri* · " + fmtTarih(gi) + "\n\n" + (satirlar.length ? satirlar.join("\n") : "Kapanış görevi yok.");
 }
-const UYARI_METIN = {kapanis: ()=>kapanisMetni(document.getElementById("kapanisGunSec") ? document.getElementById("kapanisGunSec").value : ""), skt: sktUyariMetni, espresso: espressoUyariMetni, depo: depoUyariMetni, depoSabah: depoSabahMetni, depoAksam: depoAksamMetni, bakim: bakimUyariMetni, girisYok: girisYokMetni, cikisYok: cikisYokMetni, teslim: teslimMetni, gelmedi: gelmediMetni};
+const UYARI_METIN = {kapanis: ()=>kapanisMetni(document.getElementById("kapanisGunSec") ? document.getElementById("kapanisGunSec").value : ""), skt: sktUyariMetni, espresso: espressoUyariMetni, depo: depoUyariMetni, depoSabah: depoSabahMetni, depoAksam: depoAksamMetni, bakim: bakimUyariMetni, girisYok: girisYokMetni, cikisYok: cikisYokMetni, teslim: teslimMetni, gelmedi: gelmediMetni, pastaSoru: ()=>"Merhaba arkadaşlar, bugün (" + bugunStr() + ") pasta çıkarılmadı mı? Bugün SKT işlemeyi unuttunuz mu?"};
 document.addEventListener("click", e=>{
+  const yp = e.target.closest("[data-bakim-yapilmadi]");
+  if (yp){ const x = db.bakim.find(v=>String(v.id)===String(yp.dataset.bakimYapilmadi)); if (x){ x.yapilmadi = true; kaydet(); renderAll(); toast(x.ad+" yapılmadı olarak işaretlendi"); } return; }
+  const yg = e.target.closest("[data-bakim-geri]");
+  if (yg){ const x = db.bakim.find(v=>String(v.id)===String(yg.dataset.bakimGeri)); if (x){ x.yapilmadi = false; kaydet(); renderAll(); } return; }
   const b = e.target.closest("[data-wa]");
   if (b && UYARI_METIN[b.dataset.wa]) waGonder(UYARI_METIN[b.dataset.wa]());
   const g = e.target.closest("[data-gel]");
@@ -2191,13 +2249,18 @@ const KASE = "BELKAR TEMİZLİK TURİZM AKARYAKIT NAKLİYAT TARIM İNŞAAT\nSANA
 function waGonder(metin){ window.open("https://wa.me/?text="+encodeURIComponent(metin), "_blank"); }
 const ACIK_ADRES = "Canbalı Mahallesi, Bursa Caddesi Atatürk Kültür Parkı, Ergün Koç Kültür Merkezi, No:176/1 Kent Kafe, 16700 Karacabey/Bursa";
 const ACIK_ADRES_HARITA = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("Kent Kafe, " + ACIK_ADRES);
+const ACIK_APPLE_HARITA = "https://maps.apple.com/?q=" + encodeURIComponent("Kent Kafe") + "&address=" + encodeURIComponent(ACIK_ADRES);
 document.getElementById("konumListe").innerHTML =
   `<div class="muted" style="font-size:16px;color:var(--metin, inherit);line-height:1.5;margin-bottom:10px">${esc(ACIK_ADRES)}</div>` +
-  `<div class="trow-btn"><button data-konum="wa">WhatsApp'tan gönder</button><a class="btn ghost" href="${ACIK_ADRES_HARITA}" target="_blank" style="text-decoration:none">Haritada aç</a><button class="ghost" data-konum="kopya">Kopyala</button></div>`;
+  `<div class="trow-btn"><button data-konum="wa">WhatsApp'tan gönder</button><a class="btn ghost" href="${ACIK_ADRES_HARITA}" target="_blank" style="text-decoration:none">Haritada aç</a><button class="ghost" data-konum="kopya">Kopyala</button></div>` +
+  `<div class="trow-btn" style="margin-top:8px"><button data-konum="apple">Apple Haritalar konumu gönder</button><button data-konum="google">Google Haritalar konumu gönder</button></div>`;
 document.getElementById("konumListe").addEventListener("click", e=>{
   const b = e.target.closest("[data-konum]"); if (!b) return;
   const metin = "Kent Kafe · Açık adres\n" + ACIK_ADRES + "\n" + ACIK_ADRES_HARITA;
-  if (b.dataset.konum === "wa") waGonder(metin); else copyText(metin);
+  if (b.dataset.konum === "wa") return waGonder(metin);
+  if (b.dataset.konum === "kopya") return copyText(metin);
+  if (b.dataset.konum === "apple") return waGonder("Kent Kafe · Apple Haritalar konumu\n" + ACIK_APPLE_HARITA);
+  if (b.dataset.konum === "google") return waGonder("Kent Kafe · Google Haritalar konumu\n" + ACIK_ADRES_HARITA);
 });
 document.getElementById("kaseGonder").onclick = ()=>waGonder(KASE);
 document.getElementById("kaseKopya").onclick = ()=>copyText(KASE);
@@ -2286,6 +2349,31 @@ function taksiGunleri(ay){
     yok: gunler.filter(d=>!map[d].evet.length && map[d].cikis.length).map(d=>({tarih:d, kisiler:map[d].cikis}))
   };
 }
+function taksiIstatistik(ay){
+  const bug = iso(new Date());
+  const [y, m] = ay.split("-").map(Number);
+  const sonGun = new Date(y, m, 0).getDate();
+  const gunler = {};
+  db.giris.rows.forEach(r=>{
+    const t = iso(new Date(r.t));
+    if (!t.startsWith(ay)) return;
+    gunler[t] = gunler[t] || {evet:[], kayit:0};
+    gunler[t].kayit++;
+    if (up(r.taksi)==="EVET") gunler[t].evet.push(r.ad);
+  });
+  let kullanildi = 0, kullanilmadi = 0, kayitYok = 0, satirlar = "";
+  for (let d = 1; d <= sonGun; d++){
+    const t = ay + "-" + String(d).padStart(2,"0");
+    let durum, sinif;
+    if (t > bug){ durum = "Henüz gelmedi"; sinif = ""; }
+    else if (gunler[t] && gunler[t].evet.length){ kullanildi++; durum = "Taksi: " + esc([...new Set(gunler[t].evet)].join(", ")); sinif = "grn"; }
+    else if (gunler[t]){ kullanilmadi++; durum = "Taksi kullanılmadı"; sinif = "red"; }
+    else { kayitYok++; durum = "Kayıt yok"; sinif = ""; }
+    satirlar += `<div class="row"><span>${fmtTarih(t)} · ${gunAdiIso(t)}</span><span class="tag ${sinif}">${durum}</span></div>`;
+  }
+  const ozet = `<div class="row"><b>Toplam</b><span>${kullanildi} gün taksi kullanıldı · ${kullanilmadi} gün kullanılmadı${kayitYok ? " · " + kayitYok + " gün kayıt yok" : ""}</span></div>`;
+  return {kullanildi, kullanilmadi, html: ozet + satirlar};
+}
 function gunDetay(g, sinif){
   return `<details><summary>${fmtTarih(g.tarih)} · ${gunAdiIso(g.tarih)} · ${g.kisiler.length} kayıt</summary>` +
     g.kisiler.map(k=>`<div class="row"><span>${esc(k.ad)}</span><span class="tag ${sinif}">${saatMs(k.t)}</span></div>`).join("") + `</details>`;
@@ -2342,6 +2430,9 @@ function vardiyaRender(){
   document.getElementById("taksiVarList").innerHTML = tx.var.length ? tx.var.map(g=>gunDetay(g,"grn")).join("") : '<div class="muted">Bu ay taksi kullanımı yok.</div>';
   document.getElementById("taksiYokOzet").textContent = "Taksi kullanılmayan günler ("+tx.yok.length+")";
   document.getElementById("taksiYokList").innerHTML = tx.yok.length ? tx.yok.map(g=>gunDetay(g,"red")).join("") : '<div class="muted">Bu ay taksiz çıkış yok.</div>';
+  const ist = taksiIstatistik(aySec);
+  document.getElementById("taksiIstOzet").textContent = "Gün gün taksi istatistiği · " + ist.kullanildi + " gün kullanıldı, " + ist.kullanilmadi + " gün kullanılmadı";
+  document.getElementById("taksiIstList").innerHTML = ist.html;
   const liste = sirala(aylikTablo(aySec));
   const th = (k,etiket)=>`<th data-sort="${k}">${etiket}${vSort.key===k ? (vSort.dir>0 ? " ▲" : " ▼") : ""}</th>`;
   tbl.innerHTML = "<tr>" + th("ad","Personel") + th("gec","Geç kalma") + th("yok","Giriş yok") + th("izin","İzin (gün)") + th("saat","Çalışılan (sa)") + th("eksik","Eksik (sa)") + th("tk","Taksi kullandı (gün)") + th("tky","Taksi kullanmadı (gün)") + "</tr>"
@@ -2493,6 +2584,53 @@ document.getElementById("menuListe").innerHTML = BAGLANTILAR.map((b,i)=>
      <button class="ghost" data-lnk="paylas" data-i="${i}">Link paylaş</button>
    </div></div>`).join("");
 document.getElementById("menuAc").onclick = ()=>document.getElementById("menu").classList.remove("hidden");
+function carkAc(){
+  const k = aktifHaftaKey();
+  const isimler = k && db.haftalar[k] && db.haftalar[k].personel ? db.haftalar[k].personel.filter(ad=>!kapanisBaris(ad)) : [];
+  if (!isimler.length) return toast("Bu hafta için personel listesi yok");
+  let ov = document.getElementById("carkOv");
+  if (!ov){ ov = document.createElement("div"); ov.id = "carkOv"; ov.className = "modal"; document.body.appendChild(ov); }
+  ov.innerHTML = '<div class="card" style="width:min(92vw,380px);text-align:center"><h2 style="margin:0 0 8px">Çark</h2>' +
+    '<canvas id="carkCanvas" width="600" height="600" style="width:100%;max-width:340px;height:auto"></canvas>' +
+    '<div id="carkSonuc" style="font-size:20px;font-weight:700;margin:10px 0;min-height:28px"></div>' +
+    '<div class="toolbar" style="justify-content:center"><button id="carkCevir">Çevir</button><button class="ghost" id="carkKapat">Kapat</button></div></div>';
+  ov.classList.remove("hidden");
+  const canvas = document.getElementById("carkCanvas");
+  const n = isimler.length, seg = 2*Math.PI/n, R = 300;
+  const norm = a => ((a % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+  const renkler = ["#0d4a2b","#d4af37","#17663d","#b3261e","#6b3fa0","#b7791f","#2a7f62","#8a6d16"];
+  const ciz = rot => {
+    const c = canvas.getContext("2d");
+    c.clearRect(0,0,600,600); c.save(); c.translate(300,300); c.rotate(rot);
+    isimler.forEach((ad,i)=>{
+      c.beginPath(); c.moveTo(0,0); c.arc(0,0,R,i*seg,(i+1)*seg); c.closePath();
+      c.fillStyle = renkler[i % renkler.length]; c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 2; c.stroke();
+      c.save(); c.rotate(i*seg + seg/2); c.fillStyle = "#fff"; c.font = "bold " + (n > 12 ? 20 : 26) + "px system-ui";
+      c.textAlign = "right"; c.textBaseline = "middle"; c.fillText(ad, R-16, 0); c.restore();
+    });
+    c.restore();
+    c.beginPath(); c.moveTo(282,4); c.lineTo(318,4); c.lineTo(300,44); c.closePath(); c.fillStyle = "#b3261e"; c.fill();
+  };
+  let donus = 0, donuyor = false;
+  ciz(donus);
+  document.getElementById("carkCevir").onclick = ()=>{
+    if (donuyor) return; donuyor = true;
+    const bas = donus, toplam = 2*Math.PI*(5 + Math.random()*3) + Math.random()*2*Math.PI, sure = 4000, t0 = performance.now();
+    const sonuc = document.getElementById("carkSonuc"); sonuc.textContent = "";
+    const adim = now => {
+      const p = Math.min(1, (now - t0)/sure), e = 1 - Math.pow(1-p, 3);
+      donus = bas + toplam*e; ciz(donus);
+      if (p < 1) return requestAnimationFrame(adim);
+      donuyor = false;
+      const idx = Math.floor(norm(-Math.PI/2 - donus) / seg) % n;
+      sonuc.textContent = "🎉 " + isimler[idx];
+    };
+    requestAnimationFrame(adim);
+  };
+  document.getElementById("carkKapat").onclick = ()=>ov.classList.add("hidden");
+  ov.onclick = e=>{ if (e.target === ov) ov.classList.add("hidden"); };
+}
+document.getElementById("carkAc").onclick = ()=>{ document.getElementById("menu").classList.add("hidden"); carkAc(); };
 document.getElementById("menuKapat").onclick = ()=>document.getElementById("menu").classList.add("hidden");
 document.getElementById("menu").addEventListener("click", async e=>{
   if (e.target.id === "menu") return document.getElementById("menu").classList.add("hidden");

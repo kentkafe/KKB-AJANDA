@@ -2647,8 +2647,9 @@ const BK_PERIYOT = {
 };
 const BK_BIRIM = ["Dolar","TL","Euro","Altın","Gram altın","Çeyrek altın"];
 function bkVeri(){
-  db.birikim = db.birikim || {baslangic: iso(new Date()), bitis: "", periyot: "g7", birim: "TL", katilimcilar: []};
+  db.birikim = db.birikim || {baslangic: iso(new Date()), bitis: "", periyot: "g7", birim: "TL", miktar: "", katilimcilar: []};
   if (!db.birikim.birim) db.birikim.birim = "TL";
+  if (db.birikim.miktar === undefined) db.birikim.miktar = "";
   return db.birikim;
 }
 function bkTarihEkle(bas, i, p){ const d = new Date(bas+"T00:00:00"); if (p.tip === "g") d.setDate(d.getDate() + p.n*i); else d.setMonth(d.getMonth() + p.n*i); return iso(d); }
@@ -2668,12 +2669,13 @@ function bkKaristir(){
 }
 function bkMetin(){
   const v = bkVeri(); const p = BK_PERIYOT[v.periyot] || BK_PERIYOT.g7;
-  let m = "Sıralı Birikim · Birim: " + v.birim + " · Başlangıç: " + fmtTarih(v.baslangic) + " · " + p.ad + "\n\n";
+  let m = "Sıralı Birikim" + (v.miktar ? " · Miktar: " + v.miktar + " " + v.birim : " · Birim: " + v.birim) + "\nBaşlangıç: " + fmtTarih(v.baslangic) + " · " + p.ad + "\n\n";
   v.katilimcilar.forEach((k,i)=>{
-    m += (i+1) + ". " + k.ad + " · " + fmtTarih(bkTarihEkle(v.baslangic, i, p)) + " – " + fmtTarih(bkDonemBitis(v.baslangic, i, p)) + (k.miktar ? " · " + k.miktar + " " + v.birim : "") + "\n";
+    m += (i+1) + ". " + k.ad + " · " + fmtTarih(bkTarihEkle(v.baslangic, i, p)) + " – " + fmtTarih(bkDonemBitis(v.baslangic, i, p)) + "\n";
   });
   m += "\nToplam " + v.katilimcilar.length + " kişi.";
   if (v.bitis) m += "\nPlanlanan bitiş: " + fmtTarih(v.bitis);
+  m += "\n\nArkadaşlar gün sıramız bu şekilde, lütfen sırası gelen arkadaşların sırası geçmeden borcunuzu ödeyiniz.";
   return m;
 }
 function bkHtml(){
@@ -2686,7 +2688,6 @@ function bkHtml(){
     const bas = bkTarihEkle(v.baslangic, i, p), bit = bkDonemBitis(v.baslangic, i, p);
     return `<div class="row" style="align-items:center;flex-wrap:wrap;gap:6px">
       <div style="flex:1 1 130px"><b>${i+1}. ${esc(k.ad)}</b><div class="muted">${fmtTarih(bas)} – ${fmtTarih(bit)}</div></div>
-      <input class="field" data-bkf="miktar" data-i="${i}" value="${esc(k.miktar||"")}" placeholder="Miktar" style="width:90px">
       <span style="white-space:nowrap"><button class="ghost" data-bk="yukari" data-i="${i}">↑</button> <button class="ghost" data-bk="asagi" data-i="${i}">↓</button> <button style="background:#b3261e" data-bk="sil" data-i="${i}">✕</button></span>
     </div>`;
   }).join("");
@@ -2695,7 +2696,7 @@ function bkHtml(){
   return `
     <div class="muted" style="margin-bottom:8px">Kişi sayısı: <b>${n}</b> · Liste sırası = birikim sırası</div>
     <div class="toolbar" style="gap:6px;flex-wrap:wrap"><label class="muted">Başlangıç</label><input type="date" class="field" data-bkf="baslangic" value="${v.baslangic}"><label class="muted">Bitiş</label><input type="date" class="field" data-bkf="bitis" value="${v.bitis||""}"></div>
-    <div class="toolbar" style="gap:6px;margin-top:6px"><label class="muted">Periyot</label><select class="field" data-bkf="periyot">${perSecenek}</select><label class="muted">Birim</label><select class="field" data-bkf="birim">${BK_BIRIM.map(b=>`<option${b===v.birim?" selected":""}>${b}</option>`).join("")}</select></div>
+    <div class="toolbar" style="gap:6px;margin-top:6px"><label class="muted">Periyot</label><select class="field" data-bkf="periyot">${perSecenek}</select><label class="muted">Birim</label><select class="field" data-bkf="birim">${BK_BIRIM.map(b=>`<option${b===v.birim?" selected":""}>${b}</option>`).join("")}</select><label class="muted">Miktar</label><input class="field" data-bkf="miktar" value="${esc(v.miktar||"")}" placeholder="Örn. 500" style="width:110px"></div>
     <div class="toolbar" style="gap:6px;margin-top:8px"><select class="field" id="bkSec" style="flex:1"><option value="">Kişi seç…</option>${kisiSecenek}</select><button data-bk="ekle">Ekle</button></div>
     <div class="toolbar" style="gap:6px;margin-top:8px"><button data-bk="zar">🎲 Zar at (sırayı karıştır)</button><button class="ghost" data-bk="wa">WhatsApp'a gönder</button></div>
     <div style="margin-top:10px">${satirlar || '<div class="muted">Henüz kişi eklenmedi.</div>'}</div>
@@ -2725,8 +2726,7 @@ function birikimAc(){
     ov.addEventListener("change", e=>{
       const f = e.target.closest("[data-bkf]"); if (!f) return;
       const v = bkVeri(); const alan = f.dataset.bkf;
-      if (alan === "miktar") v.katilimcilar[Number(f.dataset.i)][alan] = f.value;
-      else v[alan] = f.value;
+      v[alan] = f.value;
       kaydet(); bkCiz();
     });
   }

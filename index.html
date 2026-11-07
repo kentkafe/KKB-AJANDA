@@ -121,6 +121,12 @@
   :root[data-theme="dark"] .kase { background:#0f2d1f; color:#ffffff; }
   :root[data-theme="dark"] .sw.gunBugun, :root[data-theme="dark"] .sw.gunBugun .muted, :root[data-theme="dark"] .sw.gunBugun b, :root[data-theme="dark"] .notGrup.bugun { color:#ff9a90; }
   :root[data-theme="dark"] details.kapali > summary { border-bottom-color:#7a6a2a; }
+  #zoomFab { position:fixed; right:14px; bottom:14px; z-index:40; text-align:right; }
+  #zoomFab .zoomDugme { box-shadow:0 2px 8px rgba(0,0,0,.25); border-radius:999px; padding:10px 14px; }
+  #zoomPanel { position:absolute; right:0; bottom:52px; background:var(--w); color:var(--t); border-radius:12px; padding:10px; width:230px; box-shadow:0 6px 20px rgba(0,0,0,.25); text-align:left; }
+  #zoomPanel.zoomGizli { display:none; }
+  .zoomSatir { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .zoomSatir button { min-width:44px; }
 </style>
 <style>
   :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
@@ -551,6 +557,7 @@
     <div class="chips" style="gap:8px;margin-top:6px"><button class="ghost" data-tema="auto">Telefona göre</button><button class="ghost" data-tema="dark">Gece</button><button class="ghost" data-tema="light">Gündüz</button></div></details>
     <div class="toolbar" style="justify-content:space-between"><b style="color:var(--g)">Bağlantılar</b><button class="ghost" id="menuKapat">Kapat</button></div>
     <div id="menuListe"></div>
+    <div class="menuSatir" style="margin-top:12px"><b>Sıralı Birikim</b><div><button id="birikimAcBtn">Birikimi aç</button></div></div>
     <div class="menuSatir" style="margin-top:12px"><b>Çark</b><div><button id="carkAc">Çarka git</button></div></div>
   </div>
 </div>
@@ -2605,6 +2612,129 @@ document.addEventListener("click", e=>{
 if (TEMA_MQ){ if (TEMA_MQ.addEventListener) TEMA_MQ.addEventListener("change", temaUygula); else if (TEMA_MQ.addListener) TEMA_MQ.addListener(temaUygula); }
 temaUygula();
 document.getElementById("menuAc").onclick = ()=>document.getElementById("menu").classList.remove("hidden");
+// ---- Sayfa boyutu (sağ alt) ----
+function zoomOku(){ try { const v = Number(localStorage.getItem("kkb-zoom")); return (v >= 10 && v <= 200) ? v : 100; } catch(e){ return 100; } }
+function zoomUygula(z){
+  z = Math.max(10, Math.min(200, Math.round(z)));
+  document.documentElement.style.zoom = String(z/100);
+  const f = document.getElementById("zoomFab");
+  if (f){
+    f.style.zoom = String(100/z);
+    f.querySelector("#zoomYuzde").textContent = "%" + z;
+    f.querySelectorAll("[data-zoom]").forEach(b=>b.classList.toggle("on", Number(b.dataset.zoom) === z));
+  }
+  try { localStorage.setItem("kkb-zoom", String(z)); } catch(e){}
+}
+(function zoomKur(){
+  const zf = document.createElement("div");
+  zf.id = "zoomFab";
+  zf.innerHTML = '<button id="zoomAc" class="zoomDugme" aria-label="Sayfa boyutu">🔍 <span id="zoomYuzde"></span></button>' +
+    '<div id="zoomPanel" class="zoomGizli"><div class="zoomSatir"><button class="ghost" data-zoomadim="-5">−</button><b>Sayfa boyutu</b><button class="ghost" data-zoomadim="5">+</button></div>' +
+    '<div class="chips" style="gap:6px">' + [25,50,75,100].map(v=>`<button class="ghost" data-zoom="${v}">%${v}</button>`).join("") + '</div></div>';
+  document.documentElement.appendChild(zf);
+  document.addEventListener("click", e=>{
+    if (e.target.closest("#zoomAc")) return document.getElementById("zoomPanel").classList.toggle("zoomGizli");
+    const z = e.target.closest("[data-zoom]"); if (z) return zoomUygula(Number(z.dataset.zoom));
+    const a = e.target.closest("[data-zoomadim]"); if (a) return zoomUygula(zoomOku() + Number(a.dataset.zoomadim));
+  });
+  zoomUygula(zoomOku());
+})();
+
+// ---- Sıralı Birikim ----
+const BK_PERIYOT = {
+  g7:{ad:"Haftada bir",tip:"g",n:7}, g14:{ad:"2 haftada bir",tip:"g",n:14}, g21:{ad:"3 haftada bir",tip:"g",n:21}, g28:{ad:"4 haftada bir",tip:"g",n:28},
+  a1:{ad:"Ayda bir",tip:"a",n:1}, a2:{ad:"2 ayda bir",tip:"a",n:2}, a3:{ad:"3 ayda bir",tip:"a",n:3}, a6:{ad:"6 ayda bir",tip:"a",n:6}, y1:{ad:"Yılda bir",tip:"a",n:12}
+};
+const BK_BIRIM = ["Dolar","TL","Euro","Altın","Gram altın","Çeyrek altın"];
+function bkVeri(){
+  db.birikim = db.birikim || {baslangic: iso(new Date()), bitis: "", periyot: "g7", birim: "TL", katilimcilar: []};
+  if (!db.birikim.birim) db.birikim.birim = "TL";
+  return db.birikim;
+}
+function bkTarihEkle(bas, i, p){ const d = new Date(bas+"T00:00:00"); if (p.tip === "g") d.setDate(d.getDate() + p.n*i); else d.setMonth(d.getMonth() + p.n*i); return iso(d); }
+function bkDonemBitis(bas, i, p){ const d = new Date(bkTarihEkle(bas, i+1, p)+"T00:00:00"); d.setDate(d.getDate()-1); return iso(d); }
+function bkHavuz(){
+  const set = new Set();
+  Object.values(db.haftalar || {}).forEach(h=>(h.personel||[]).forEach(ad=>set.add(ad)));
+  return [...set].sort((a,b)=>a.localeCompare(b,"tr"));
+}
+function bkKaristir(){
+  const v = bkVeri(); const a = v.katilimcilar.slice();
+  for (let i = a.length-1; i > 0; i--){
+    const u = new Uint32Array(1); crypto.getRandomValues(u);
+    const j = u[0] % (i+1); [a[i], a[j]] = [a[j], a[i]];
+  }
+  v.katilimcilar = a;
+}
+function bkMetin(){
+  const v = bkVeri(); const p = BK_PERIYOT[v.periyot] || BK_PERIYOT.g7;
+  let m = "Sıralı Birikim · Birim: " + v.birim + " · Başlangıç: " + fmtTarih(v.baslangic) + " · " + p.ad + "\n\n";
+  v.katilimcilar.forEach((k,i)=>{
+    m += (i+1) + ". " + k.ad + " · " + fmtTarih(bkTarihEkle(v.baslangic, i, p)) + " – " + fmtTarih(bkDonemBitis(v.baslangic, i, p)) + (k.miktar ? " · " + k.miktar + " " + v.birim : "") + "\n";
+  });
+  m += "\nToplam " + v.katilimcilar.length + " kişi.";
+  if (v.bitis) m += "\nPlanlanan bitiş: " + fmtTarih(v.bitis);
+  return m;
+}
+function bkHtml(){
+  const v = bkVeri(); const p = BK_PERIYOT[v.periyot] || BK_PERIYOT.g7; const n = v.katilimcilar.length;
+  const secilen = new Set(v.katilimcilar.map(k=>k.ad));
+  const havuz = bkHavuz().filter(ad=>!secilen.has(ad));
+  const perSecenek = Object.entries(BK_PERIYOT).map(([k,x])=>`<option value="${k}"${k===v.periyot?" selected":""}>${x.ad}</option>`).join("");
+  const kisiSecenek = havuz.map(ad=>`<option value="${esc(ad)}">${esc(ad)}</option>`).join("");
+  const satirlar = v.katilimcilar.map((k,i)=>{
+    const bas = bkTarihEkle(v.baslangic, i, p), bit = bkDonemBitis(v.baslangic, i, p);
+    return `<div class="row" style="align-items:center;flex-wrap:wrap;gap:6px">
+      <div style="flex:1 1 130px"><b>${i+1}. ${esc(k.ad)}</b><div class="muted">${fmtTarih(bas)} – ${fmtTarih(bit)}</div></div>
+      <input class="field" data-bkf="miktar" data-i="${i}" value="${esc(k.miktar||"")}" placeholder="Miktar" style="width:90px">
+      <span style="white-space:nowrap"><button class="ghost" data-bk="yukari" data-i="${i}">↑</button> <button class="ghost" data-bk="asagi" data-i="${i}">↓</button> <button style="background:#b3261e" data-bk="sil" data-i="${i}">✕</button></span>
+    </div>`;
+  }).join("");
+  let uyari = "";
+  if (v.bitis && n){ const son = bkDonemBitis(v.baslangic, n-1, p); if (son !== v.bitis) uyari = `<div class="muted" style="margin-top:8px">Planlanan bitiş ${fmtTarih(v.bitis)}, bu sıraya göre son dönem bitişi ${fmtTarih(son)}.</div>`; }
+  return `
+    <div class="muted" style="margin-bottom:8px">Kişi sayısı: <b>${n}</b> · Liste sırası = birikim sırası</div>
+    <div class="toolbar" style="gap:6px;flex-wrap:wrap"><label class="muted">Başlangıç</label><input type="date" class="field" data-bkf="baslangic" value="${v.baslangic}"><label class="muted">Bitiş</label><input type="date" class="field" data-bkf="bitis" value="${v.bitis||""}"></div>
+    <div class="toolbar" style="gap:6px;margin-top:6px"><label class="muted">Periyot</label><select class="field" data-bkf="periyot">${perSecenek}</select><label class="muted">Birim</label><select class="field" data-bkf="birim">${BK_BIRIM.map(b=>`<option${b===v.birim?" selected":""}>${b}</option>`).join("")}</select></div>
+    <div class="toolbar" style="gap:6px;margin-top:8px"><select class="field" id="bkSec" style="flex:1"><option value="">Kişi seç…</option>${kisiSecenek}</select><button data-bk="ekle">Ekle</button></div>
+    <div class="toolbar" style="gap:6px;margin-top:8px"><button data-bk="zar">🎲 Zar at (sırayı karıştır)</button><button class="ghost" data-bk="wa">WhatsApp'a gönder</button></div>
+    <div style="margin-top:10px">${satirlar || '<div class="muted">Henüz kişi eklenmedi.</div>'}</div>
+    ${uyari}
+    <div class="toolbar" style="justify-content:flex-end;margin-top:10px"><button class="ghost" data-bk="kapat">Kapat</button></div>`;
+}
+function bkCiz(){
+  document.getElementById("birikimOv").innerHTML = '<div class="card" style="width:min(94vw,460px);max-height:90vh;overflow:auto;text-align:left"><h2 style="margin:0 0 8px">Sıralı Birikim</h2>' + bkHtml() + '</div>';
+}
+function birikimAc(){
+  let ov = document.getElementById("birikimOv");
+  if (!ov){
+    ov = document.createElement("div"); ov.id = "birikimOv"; ov.className = "modal"; document.body.appendChild(ov);
+    ov.addEventListener("click", e=>{
+      if (e.target === ov) return ov.classList.add("hidden");
+      const b = e.target.closest("[data-bk]"); if (!b) return;
+      const v = bkVeri(); const a = b.dataset.bk; const i = Number(b.dataset.i);
+      if (a === "kapat") return ov.classList.add("hidden");
+      if (a === "wa") return waGonder(bkMetin());
+      if (a === "ekle"){ const s = document.getElementById("bkSec"); if (!s || !s.value) return toast("Önce kişi seç"); v.katilimcilar.push({ad: s.value, miktar: ""}); }
+      else if (a === "sil") v.katilimcilar.splice(i, 1);
+      else if (a === "yukari" && i > 0) [v.katilimcilar[i-1], v.katilimcilar[i]] = [v.katilimcilar[i], v.katilimcilar[i-1]];
+      else if (a === "asagi" && i < v.katilimcilar.length-1) [v.katilimcilar[i+1], v.katilimcilar[i]] = [v.katilimcilar[i], v.katilimcilar[i+1]];
+      else if (a === "zar") bkKaristir();
+      kaydet(); bkCiz();
+    });
+    ov.addEventListener("change", e=>{
+      const f = e.target.closest("[data-bkf]"); if (!f) return;
+      const v = bkVeri(); const alan = f.dataset.bkf;
+      if (alan === "miktar") v.katilimcilar[Number(f.dataset.i)][alan] = f.value;
+      else v[alan] = f.value;
+      kaydet(); bkCiz();
+    });
+  }
+  ov.classList.remove("hidden");
+  bkCiz();
+}
+document.getElementById("birikimAcBtn").onclick = ()=>{ document.getElementById("menu").classList.add("hidden"); birikimAc(); };
+
 function carkAc(){
   const k = aktifHaftaKey();
   const isimler = k && db.haftalar[k] && db.haftalar[k].personel ? db.haftalar[k].personel.filter(ad=>!kapanisBaris(ad)) : [];

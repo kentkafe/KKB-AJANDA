@@ -636,7 +636,7 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const lc = s => String(s||"").toLocaleLowerCase("tr");
 const up = s => String(s||"").toLocaleUpperCase("tr").trim();
-const izinMi = v => { const t = up(v); return t==="OFF" || t==="İZİN" || t==="-" || t==="–" || t==="—"; };
+const izinMi = v => { const t = up(v); return t==="OFF" || t==="İZİN" || t==="ÜCRETSİZ İZİN" || t==="-" || t==="–" || t==="—"; };
 const morMi = v => { const t = up(v); return t==="-" || t==="–" || t==="—"; };
 function saatAraligi(v){
   const m = String(v||"").match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/); if(!m) return null;
@@ -1005,7 +1005,7 @@ function bugunRender(){
   });
   document.getElementById("calisanList").innerHTML = c ? `<div class="shift-cols">${c}</div>` : '<div class="muted">Bu gün çalışan kaydı yok.</div>';
   document.getElementById("izinList").innerHTML = izin.length
-    ? izin.map(x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag ${morMi(x.v)?"mor":"red"}">${morMi(x.v)?"İzinli (-)":"Haftalık izin (OFF)"}</span></div>`).join("")
+    ? izin.map(x=>`<div class="row"><span>${esc(x.ad)}</span><span class="tag ${morMi(x.v)?"mor":"red"}">${morMi(x.v)?"İzinli (-)":(up(x.v)==="ÜCRETSİZ İZİN"?"Ücretsiz izin":"Haftalık izin (OFF)")}</span></div>`).join("")
     : '<div class="muted">Bu gün izinli personel yok.</div>';
   const bk = db.bakim.map(b=>({...b, d:bakimDurum(b)})).sort((a,b)=>a.d.gun-b.d.gun);
   const yakinBk = bk.filter(b=>b.d.gun <= 30);
@@ -1114,10 +1114,63 @@ function programPdfdenCikar(satirlar){
   if (!personel || Object.keys(gunler).length<7) return null;
   return {personel, gunler, aralik: aralik || ("Yüklenen "+bugunStr())};
 }
+// Konum tabanlı PDF okuma: boş hücreler ve değişen saatler sorun olmasın diye hücreleri x konumuna göre personele eşler
+async function pdfSatirKonum(file){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+  const satirlar = [];
+  for (let s=1; s<=pdf.numPages; s++){
+    const sayfa = await (await pdf.getPage(s)).getTextContent();
+    const gruplar = {};
+    sayfa.items.forEach(it=>{
+      if (!it.str || !it.str.trim()) return;
+      const y = Math.round(it.transform[5]/3)*3;
+      (gruplar[y] = gruplar[y] || []).push({x0: it.transform[4], x1: it.transform[4] + (it.width || 0), t: it.str.trim()});
+    });
+    Object.keys(gruplar).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const items = gruplar[y].sort((a,b)=>a.x0-b.x0);
+      const hucreler = [];
+      items.forEach(it=>{
+        const son = hucreler[hucreler.length-1];
+        if (son && it.x0 - son.x1 < 6){ son.t += " " + it.t; son.x1 = Math.max(son.x1, it.x1); }
+        else hucreler.push({x0: it.x0, x1: it.x1, t: it.t});
+      });
+      satirlar.push({hucreler, metin: items.map(i=>i.t).join(" ")});
+    });
+  }
+  return satirlar;
+}
+function programPdfKonumdan(satirlar){
+  const adRegex = /^[A-ZÇĞİÖŞÜ]{2,}\s[A-ZÇĞİÖŞÜ]\.$/;
+  let personel = null, colX = null, aralik = null;
+  const gunler = {};
+  for (const sat of satirlar){
+    if (!aralik){ const m = sat.metin.match(/\d{2}\.\d{2}\.\d{4}\s*-\s*\d{2}\.\d{2}\.\d{4}/); if (m) aralik = m[0].replace(/\s*-\s*/," - "); }
+    const hs = sat.hucreler.map(h=>({t: h.t, u: h.t.toLocaleUpperCase("tr"), cx: (h.x0 + h.x1)/2}));
+    if (!personel){
+      const adlar = hs.filter(h=>adRegex.test(h.u));
+      if (adlar.length >= 8){ personel = adlar.map(h=>h.u); colX = adlar.map(h=>h.cx); }
+      continue;
+    }
+    if (!hs.length) continue;
+    const gun = hs[0].u;
+    if (!GUN_AD.includes(gun) || gunler[gun]) continue;
+    const vals = personel.map(()=>"ÜCRETSİZ İZİN");
+    hs.slice(1).forEach(h=>{
+      let en = -1, best = Infinity;
+      colX.forEach((c,k)=>{ const d = Math.abs(c - h.cx); if (d < best){ best = d; en = k; } });
+      if (en < 0 || best > 40) return;
+      vals[en] = h.t.replace(/\s*-\s*/," - ");
+    });
+    gunler[gun] = vals;
+  }
+  if (!personel || Object.keys(gunler).length < 7) return null;
+  return {personel, gunler, aralik: aralik || ("Yüklenen "+bugunStr())};
+}
 document.getElementById("pdfInput").addEventListener("change", async e=>{
   const file = e.target.files[0]; if (!file) return;
   try {
-    const sonuc = programPdfdenCikar(await pdfSatirlar(file));
+    const sonuc = programPdfKonumdan(await pdfSatirKonum(file));
     if (!sonuc){ toast("PDF'ten tablo okunamadı. Elle girebilirsin."); e.target.value=""; return; }
     const program = {};
     sonuc.personel.forEach((ad,i)=>{ program[ad] = GUN_AD.map(g=>sonuc.gunler[g][i]); });

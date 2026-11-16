@@ -127,6 +127,8 @@
   #zoomPanel.zoomGizli { display:none; }
   .zoomSatir { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .zoomSatir button { min-width:44px; }
+  .zoomKucuk main { max-width:none !important; }
+  .ustBar { position:sticky; top:0; z-index:60; background:var(--gl); }
 </style>
 <style>
   :root { --gold:#d4af37; --gold2:#f3d77a; --gdark:#8a6d16; }
@@ -181,6 +183,7 @@
 </style>
 </head>
 <body>
+<div class="ustBar">
 <header>
   <button class="menuBtn" id="menuAc" aria-label="Menü">☰</button>
   <h1 style="text-align:center">KKB AJANDA</h1>
@@ -190,10 +193,8 @@
     <button class="search-btn" id="aramaBtn" title="Ara">🔍</button>
   </div>
 </header>
-<div id="aramaSonuc" class="hidden" style="padding:10px 12px"></div>
-
 <nav>
-  <button data-tab="bugun" class="on">Bugün</button>
+  <button data-tab="bugun" class="on">Ana sayfa</button>
   <button data-tab="program">Haftalık Program</button>
   <button data-tab="istasyon">İstasyon & Mola</button>
   <button data-tab="giris">Vardiya Takip</button>
@@ -206,13 +207,14 @@
   <button data-tab="notlar">Notlar</button>
   <button data-tab="mesaj">WhatsApp</button>
 </nav>
+</div>
+<div id="aramaSonuc" class="hidden" style="padding:10px 12px"></div>
 
 <main>
   <!-- BUGÜN -->
   <section id="tab-bugun">
     <div class="card">
       <div class="gunbaslik" id="gunAdi"></div>
-      <div class="muted" id="hava" style="margin-top:6px">Hava durumu yükleniyor...</div>
     </div>
     <div class="card"><h2>Şu An Molada</h2><div id="moladaBugun"></div></div>
     <div class="card"><div class="kart-baslik"><h2>Bugün Çalışan</h2><input type="date" class="field tarih-secici" id="calisanGun" aria-label="Tarih seç"></div><div id="calisanList"></div></div>
@@ -220,6 +222,7 @@
     <div class="card"><div class="kart-baslik"><h2>Vardiya Takip Durumu</h2><input type="date" class="field tarih-secici" id="vardiyaTarih" aria-label="Tarih seç"></div><div id="girisOzet"></div></div>
     <div class="card"><div class="kart-baslik"><h2>Espresso Makineleri</h2><input type="date" class="field tarih-secici" id="jimboGun" aria-label="Tarih seç"></div><div class="muted" id="jimboTarih"></div><div id="jimboBugun"></div></div>
     <div class="card"><h2>Anımsatıcı</h2><div id="yaklasanList"></div></div>
+    <div class="card"><h2>Hava Durumu</h2><div class="muted" id="hava">Hava durumu yükleniyor...</div></div>
     <div class="card"><div class="kart-baslik"><h2>Teşhir Dolabı · Pasta</h2><input type="date" class="field tarih-secici" id="pastaTarih" aria-label="Tarih seç"></div><div id="sktPasta"></div></div>
     <div class="card"><h2>Depo Takip</h2><div id="depoBugun"></div></div>
     <div class="card"><h2>Kapanış Görevleri</h2>
@@ -228,7 +231,7 @@
       <div class="toolbar" style="margin-top:8px"><button class="ghost" data-wa="kapanis">WhatsApp'a gönder</button></div>
     </div>
     <div class="card"><details><summary><b>Haftalık Kapanış Görevleri (arşiv)</b></summary>
-      <div class="toolbar" style="margin-top:10px"><select class="field" id="kapanisHaftaSec"></select></div>
+      <div class="toolbar" style="margin-top:10px"><select class="field" id="kapanisHaftaSec"></select><button class="ghost" data-kapwa="1">Haftalık kapanış tablosunu WhatsApp'tan gönder</button></div>
       <div class="scroll" style="margin-top:10px"><table id="kapanisHafta"></table></div>
     </details></div>
     <div class="card"><h2>Yaklaşan Bakımlar</h2><div id="bakimOzet"></div></div>
@@ -239,14 +242,6 @@
         <button id="yedekIndir">Yedeği WhatsApp'a gönder</button>
         <label class="btn ghost" style="cursor:pointer">Yedek yükle<input type="file" id="yedekYukle" accept="application/json" style="display:none"></label>
       </div>
-    </div>
-    <div class="card">
-      <details>
-        <summary><b>Aylık Özet Tablosu</b></summary>
-        <div class="toolbar" style="margin-top:10px"><button class="ghost" id="ozetOnce">◀</button><input type="month" id="ozetAy"><button class="ghost" id="ozetSonra">▶</button></div>
-        <div class="scroll"><table id="ozetAyTablo"></table></div>
-        <div class="scroll" style="margin-top:12px"><table id="ozetGenelTablo"></table></div>
-      </details>
     </div>
   </section>
 
@@ -298,16 +293,14 @@
       <div id="taksiBugun"></div>
     </div>
     <div class="card">
-      <h2>Aylık Özet · <span id="ayBaslik"></span></h2>
+      <h2>Aylık Özet Tablosu · <span id="ayBaslik"></span></h2>
       <div class="chips" id="ayChips"></div>
+      <div class="scroll" style="margin-top:8px"><table id="ayTablo" data-filtre></table></div>
+      <details style="margin-top:10px"><summary><b>Genel özet (espresso, depo, teşhir, toptan)</b></summary><div class="scroll" style="margin-top:8px"><table id="ozetGenelTablo"></table></div></details>
       <div class="grp">Taksi</div>
       <details><summary id="taksiVarOzet"></summary><div id="taksiVarList"></div></details>
       <details><summary id="taksiYokOzet"></summary><div id="taksiYokList"></div></details>
       <details><summary id="taksiIstOzet"></summary><div id="taksiIstList"></div></details>
-    </div>
-    <div class="card">
-      <h2>Personel Aylık Tablo</h2>
-      <div class="scroll"><table id="ayTablo" data-filtre></table></div>
     </div>
   </section>
 
@@ -413,6 +406,7 @@
     <div class="card">
       <details>
         <summary><b>Toptancılar</b> · <span id="toptanSayi"></span></summary>
+        <div class="toolbar" style="margin-top:10px"><input class="field" id="toptanAra" type="search" placeholder="Toptancı adıyla ara..." style="flex:1"></div>
         <div id="toptanList" style="margin-top:10px"></div>
         <details class="ekle-detay" style="margin-top:10px"><summary>+ Yeni toptancı ekle</summary>
         <input class="field" id="tAd" placeholder="Toptancı adı">
@@ -558,6 +552,7 @@
     <div class="toolbar" style="justify-content:space-between"><b style="color:var(--g)">Bağlantılar</b><button class="ghost" id="menuKapat">Kapat</button></div>
     <div id="menuListe"></div>
     <div class="menuSatir" style="margin-top:12px"><b>Sıralı Birikim</b><div><button id="birikimAcBtn">Birikimi aç</button></div></div>
+    <div class="menuSatir" style="margin-top:12px"><b>Yazı Tura</b><div><button id="yaziTuraAcBtn">Parayı at</button></div></div>
     <div class="menuSatir" style="margin-top:12px"><b>Çark</b><div><button id="carkAc">Çarka git</button></div></div>
   </div>
 </div>
@@ -763,8 +758,8 @@ function girisDurum(gunIso){
     const s = saatAraligi(v); if (!s) return;
     const bas = base.getTime() + s.b*60000, bit = base.getTime() + s.e*60000;
     const kayit = rows.filter(r=>sameName(ad, r.ad));
-    const girisler = kayit.filter(r=>/BAŞLIYOR/.test(r.islem) && r.t >= bas-180*60000 && r.t <= bit).sort((a,b)=>a.t-b.t);
-    const cikislar = kayit.filter(r=>/ÇIKIYOR/.test(r.islem) && r.t >= bas && r.t <= bit+180*60000);
+    const girisler = kayit.filter(r=>/BAŞLI|BASLI/i.test(up(r.islem)) && r.t >= bas-180*60000 && r.t <= bit).sort((a,b)=>a.t-b.t);
+    const cikislar = kayit.filter(r=>/ÇIKI|CIKI/i.test(up(r.islem)) && r.t >= bas && r.t <= bit+180*60000);
     if (girisler.length){
       const fark = Math.round((girisler[0].t - bas)/60000);
       if (fark > 5) sonuc.gec.push({ad, v, dk:fark, neden:girisler[0].neden, gun:etiket});
@@ -946,10 +941,8 @@ function ayKaydir(n){
   ozetTabloRender();
 }
 function ozetTabloRender(){
-  const el = document.getElementById("ozetAyTablo"); if (!el) return;
-  const ayEl = document.getElementById("ozetAy");
-  if (!ayEl.value) ayEl.value = iso(new Date()).slice(0,7);
-  const ay = ayEl.value, bug = iso(new Date());
+  const el = document.getElementById("ayTablo"); if (!el) return;
+  const ay = aySec, bug = iso(new Date());
   const pl = aylikTablo(ay);
   const gunler = programGunleri().filter(g=>g.tarih.startsWith(ay) && g.tarih<=bug && !g.izin);
   const girisRows = db.giris.rows || [];
@@ -961,18 +954,20 @@ function ozetTabloRender(){
   const taksiGunleri = ad => [...new Set(girisRows.filter(r=>sameName(ad, r.ad) && up(r.taksi)==="EVET" && iso(new Date(r.t)).startsWith(ay) && iso(new Date(r.t)) <= bug).map(r=>iso(new Date(r.t))))].sort();
   const depoCikis = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih.startsWith(ay) && r.tur==="ÇIKIŞ");
   const jr = ((db.jimbo && db.jimbo.rows) || []).filter(r=>r.tarih.startsWith(ay));
-  const rows = pl.slice().sort((a,b)=>a.ad.localeCompare(b.ad,"tr")).map(k=>{
+  const rows = pl.map(k=>{
     const tg = taksiGunleri(k.ad);
     return {ad:k.ad, gec:k.gec, dk:k.dk, erken:erkenSay(k.ad), yok:k.yok, izin:k.izin, saat:k.saat, eksik:k.eksik,
-      tk:tg.length, tgun: tg.map(d=>fmtTarih(d).slice(0,5)).join(", "),
+      tk:tg.length, tky:k.tky, tgun: tg.map(d=>fmtTarih(d).slice(0,5)).join(", "),
       depo: depoCikis.filter(r=>sameName(k.ad, r.personel)).length,
       teslim: jr.filter(r=>r.teslim && sameName(k.ad, r.personel)).length};
   });
+  const liste = sirala(rows);
   const top = k => rows.reduce((s,r)=>s+(Number(r[k])||0),0);
-  el.innerHTML = "<tr><th>Personel</th><th>Geç kalma</th><th>Erken başlama</th><th>Giriş yok</th><th>İzin (gün)</th><th>Çalışılan (sa)</th><th>Eksik (sa)</th><th>Taksi (gün)</th><th>Taksi günleri</th><th>Depo çıkışı</th><th>Espresso teslim</th></tr>" +
-    (rows.length
-      ? rows.map(r=>`<tr><td class="l"><b>${esc(r.ad)}</b></td><td>${r.gec} kez · ${r.dk} dk</td><td>${r.erken}</td><td>${r.yok}</td><td>${r.izin}</td><td>${r.saat.toFixed(1)}</td><td>${r.eksik.toFixed(1)}</td><td>${r.tk}</td><td class="l wrap">${esc(r.tgun||"-")}</td><td>${r.depo}</td><td>${r.teslim}</td></tr>`).join("") +
-        `<tr><td class="l"><b>Toplam</b></td><td>${top("gec")} kez · ${top("dk")} dk</td><td>${top("erken")}</td><td>${top("yok")}</td><td>${top("izin")}</td><td>${top("saat").toFixed(1)}</td><td>${top("eksik").toFixed(1)}</td><td>${top("tk")}</td><td></td><td>${top("depo")}</td><td>${top("teslim")}</td></tr>`
+  const th = (k,etiket)=>`<th data-sort="${k}">${etiket}${vSort.key===k ? (vSort.dir>0 ? " ▲" : " ▼") : ""}</th>`;
+  el.innerHTML = "<tr>" + th("ad","Personel") + th("gec","Geç kalma") + th("erken","Erken başlama") + th("yok","Giriş yok") + th("izin","İzin (gün)") + th("saat","Çalışılan (sa)") + th("eksik","Eksik (sa)") + th("tk","Taksi kullandı (gün)") + th("tky","Taksi kullanmadı (gün)") + "<th>Taksi günleri</th>" + th("depo","Depo çıkışı") + th("teslim","Espresso teslim") + "</tr>" +
+    (liste.length
+      ? liste.map(r=>`<tr><td class="l"><b>${esc(r.ad)}</b></td><td>${r.gec} kez · ${r.dk} dk</td><td>${r.erken}</td><td>${r.yok}</td><td>${r.izin}</td><td>${r.saat.toFixed(1)}</td><td>${r.eksik.toFixed(1)}</td><td>${r.tk}</td><td>${r.tky}</td><td class="l wrap">${esc(r.tgun||"-")}</td><td>${r.depo}</td><td>${r.teslim}</td></tr>`).join("") +
+        `<tr><td class="l"><b>Toplam</b></td><td>${top("gec")} kez · ${top("dk")} dk</td><td>${top("erken")}</td><td>${top("yok")}</td><td>${top("izin")}</td><td>${top("saat").toFixed(1)}</td><td>${top("eksik").toFixed(1)}</td><td>${top("tk")}</td><td>${top("tky")}</td><td></td><td>${top("depo")}</td><td>${top("teslim")}</td></tr>`
       : "<tr><td>Kayıt yok.</td></tr>");
   const dr = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih.startsWith(ay));
   const sr = ((db.skt && db.skt.rows) || []).filter(r=>String(r.kayit||"").startsWith(ay));
@@ -986,8 +981,6 @@ function ozetTabloRender(){
   document.getElementById("ozetGenelTablo").innerHTML = "<tr><th>Bölüm</th><th>Gösterge</th><th>Değer</th></tr>" +
     genel.map(([b,g,d])=>`<tr><td class="l"><b>${esc(b)}</b></td><td class="l">${esc(g)}</td><td>${d}</td></tr>`).join("");
 }
-document.getElementById("ozetOnce").onclick = ()=>ayKaydir(-1);
-document.getElementById("ozetSonra").onclick = ()=>ayKaydir(1);
 function bugunRender(){
   ozetTabloRender();
   document.getElementById("gunAdi").textContent = bugunStr() + " · " + GUN_AD[bugunIdx];
@@ -1284,8 +1277,10 @@ function bugunSevkiyat(gunler){
 }
 function toptanRender(){
   document.getElementById("toptanSayi").textContent = db.toptanci.length + " toptancı";
-  document.getElementById("toptanList").innerHTML = db.toptanci.length
-    ? db.toptanci.map(t=>`
+  const toptanQ = up((document.getElementById("toptanAra")||{}).value || "").trim();
+  const toptanGoster = db.toptanci.filter(t=>!toptanQ || up(t.ad).includes(toptanQ));
+  document.getElementById("toptanList").innerHTML = toptanGoster.length
+    ? toptanGoster.map(t=>`
       <div class="trow">
         <div class="trow-ust">
           <div><b>${esc(t.ad)}</b>${bugunSevkiyat(t.gunler) ? ' <span class="tag grn">Bugün sevkiyat</span>' : ''}
@@ -1602,7 +1597,6 @@ function acilisUyarilari(){
   if (new Date().getHours() >= 12 && !((db.skt && db.skt.rows) || []).some(r=>r.kayit===bug)) u.push("Bugün pasta çıkarılmadı");
   const lim = Date.now() + 86400000;
   db.notlar.filter(n=>n.durum!=="yapildi" && n.tarih && dueOf(n).getTime() <= lim).forEach(n=>u.push("Anımsatıcı: " + n.metin));
-  db.bakim.map(b=>({...b, d:bakimDurum(b)})).filter(b=>b.d.gun <= 30).forEach(b=>u.push("Bakım: " + b.ad + " (" + b.d.etiket + ")"));
   const eksik = teslimEksikler();
   if (eksik.length) u.push("Espresso teslim alınmadı: " + eksik.length + " makine");
   return u;
@@ -1678,36 +1672,47 @@ function kapanisKasaci(gunIso, kisiler){
   const r = (rows||[]).find(r=>/KASA/.test(up(r.istasyon)) && kisiler.some(ad=>sameName(ad, r.ad)));
   return r ? kisiler.find(ad=>sameName(ad, r.ad)) : null;
 }
+function kapanisRolleri(gunIso, kisiler){
+  const gun = db.istGunler && db.istGunler[gunIso];
+  const rows = gun ? gun.rows : ((gunIso === iso(new Date()) && db.istasyon) ? db.istasyon.rows : []);
+  const roller = {kasa:[], meydan:[], j1:null, j2:null, arka:[]};
+  kisiler.forEach(ad=>{
+    const r = (rows||[]).find(x=>sameName(ad, x.ad));
+    if (!r) return;
+    const st = up(r.istasyon||"");
+    if (/KASA/.test(st)) roller.kasa.push(ad);
+    else if (/MEYDAN/.test(st)) roller.meydan.push(ad);
+    else if (/J[İI]MBO\s*1/.test(st)) roller.j1 = ad;
+    else if (/J[İI]MBO\s*2/.test(st)) roller.j2 = ad;
+    else if (/BACK|ARKA/.test(st)) roller.arka.push(ad);
+  });
+  return roller;
+}
 function kapanisAtama(gunIso, kisiler, meydanci, manuel, kasaci){
   const mn = manuel || {};
   const atama = {};
   KAPANIS_GOREVLER_ALL.forEach(g=>{ atama[g] = []; });
-  // 1) Elle sabitlenen görevler
   KAPANIS_GOREVLER_ALL.forEach(g=>{ if (mn[g]) atama[g] = mn[g].filter(ad=>kisiler.includes(ad) && !kapanisBaris(ad)); });
-  // 2) Meydan temizliği: elle yoksa istasyondaki meydancı / Zeynep
-  if (!mn[KAPANIS_MEYDAN]) atama[KAPANIS_MEYDAN] = meydanci && kisiler.includes(meydanci) ? [meydanci] : [];
-  // 2b) Kasa: istasyonda kasada kim varsa
-  if (!mn[KAPANIS_KASA]) atama[KAPANIS_KASA] = kasaci && kisiler.includes(kasaci) ? [kasaci] : [];
-  const yerlesen = new Set(Object.values(atama).flat());
-  // 3) Otomatik dağılım: önceki günlere göre adil
-  const sayac = {};
-  Object.entries(db.kapanis.gunler).forEach(([d,v])=>{
-    if (d >= gunIso) return;
-    Object.entries(v.atama||{}).forEach(([g,list])=>(list||[]).forEach(ad=>{ const k = ad+"|"+g; sayac[k] = (sayac[k]||0)+1; }));
-  });
-  const toplam = ad => Object.keys(sayac).filter(k=>k.startsWith(ad+"|")).reduce((t,k)=>t+sayac[k],0);
-  const dunIso = iso(new Date(new Date(gunIso+"T00:00:00").getTime() - 86400000));
-  const dun = db.kapanis.gunler[dunIso];
-  const dunAyni = (ad, g) => (dun && (dun.atama[g]||[]).includes(ad)) ? 1 : 0;
-  KAPANIS_OTO_SIRA.forEach(g=>{
-    if (mn[g]) return;
-    for (let i=0; i<KAPANIS_SLOT[g]; i++){
-      const aday = kisiler.filter(ad=>!kapanisBaris(ad) && !yerlesen.has(ad)).sort((a,b)=>
-        ((sayac[a+"|"+g]||0)-(sayac[b+"|"+g]||0)) || (dunAyni(a,g)-dunAyni(b,g)) || (toplam(a)-toplam(b)) || a.localeCompare(b,"tr"))[0];
-      if (!aday) break;
-      atama[g].push(aday); yerlesen.add(aday);
-    }
-  });
+  const ekle = (g, ad)=>{ if (!mn[g] && ad && !atama[g].includes(ad)) atama[g].push(ad); };
+  const r = kapanisRolleri(gunIso, kisiler.filter(ad=>!kapanisBaris(ad)));
+  // Kasada duran: mal çekme + kasa
+  r.kasa.forEach(ad=>{ ekle("Mal çekme", ad); ekle(KAPANIS_KASA, ad); });
+  // Meydanda duran: meydan temizliği
+  r.meydan.forEach(ad=>ekle("Meydan temizliği", ad));
+  // Jimbo 1: serviste kalma + temizlik ve bulaşık; Jimbo 2: serviste kalma + süpürge paspas
+  if (r.j1){ ekle("Serviste kalma", r.j1); ekle("Temizlik ve bulaşık", r.j1); }
+  if (r.j2){ ekle("Serviste kalma", r.j2); ekle("Süpürge paspas", r.j2); }
+  // Arka plan: 2 kişiyse biri serviste kalma + temizlik ve bulaşık, diğeri mal çekme + meydan temizliği (gün gün dönüşümlü); 1 kişiyse mal çekme + meydan
+  const arka = r.arka.slice().sort((a,b)=>a.localeCompare(b,"tr"));
+  if (arka.length >= 2){
+    const d = Math.round(new Date(gunIso+"T00:00:00").getTime()/86400000) % 2;
+    const x = arka[d], y = arka[1-d];
+    ekle("Serviste kalma", x); ekle("Temizlik ve bulaşık", x);
+    ekle("Mal çekme", y); ekle("Meydan temizliği", y);
+    arka.slice(2).forEach(ad=>ekle("Serviste kalma", ad));
+  } else if (arka.length === 1){
+    ekle("Mal çekme", arka[0]); ekle("Meydan temizliği", arka[0]);
+  }
   return atama;
 }
 function kapanisGun(gunIso){
@@ -1717,9 +1722,9 @@ function kapanisGun(gunIso){
   const kay = db.kapanis.gunler[gunIso];
   const md = kapanisMeydanci(gunIso, kisiler) || null;
   const kc = kapanisKasaci(gunIso, kisiler) || null;
-  if (kay && kay.v===3 && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler) && (kay.meydanci||null)===md && (kay.kasaci||null)===kc) return kay;
+  if (kay && kay.v===5 && JSON.stringify(kay.kisiler)===JSON.stringify(kisiler) && (kay.meydanci||null)===md && (kay.kasaci||null)===kc) return kay;
   const manuel = kay ? kay.manuel : undefined;
-  const yeni = {v:3, kisiler, meydanci: md, kasaci: kc, manuel, atama: kapanisAtama(gunIso, kisiler, md, manuel, kc)};
+  const yeni = {v:5, kisiler, meydanci: md, kasaci: kc, manuel, atama: kapanisAtama(gunIso, kisiler, md, manuel, kc)};
   if (!kay || JSON.stringify(kay)!==JSON.stringify(yeni)){ db.kapanis.gunler[gunIso] = yeni; kaydet(); }
   return db.kapanis.gunler[gunIso];
 }
@@ -1752,6 +1757,21 @@ document.addEventListener("change", e=>{
 });
 function kapanisHaftaTumu(){
   return Object.keys(db.haftalar).map(k=>({k, a:parseAralik(k)})).filter(x=>x.a).sort((x,y)=>x.a.s-y.a.s);
+}
+function kapanisHaftaMetni(){
+  const aktif = aktifHaftaKey(); const aa = aktif && parseAralik(aktif);
+  if (!aa) return "Bu hafta için program yok.";
+  let m = "🧹 Haftalık kapanış görevleri · " + aktif + "\n";
+  kapanisHaftaGunleri(aa).forEach(d=>{
+    const gi = iso(d); const kay = kapanisGun(gi);
+    if (!kay) return;
+    const satirlar = KAPANIS_GOREVLER_ALL.map(g=>{
+      const l = (kay.atama[g]||[]).filter(ad=>!kapanisBaris(ad));
+      return l.length ? "  " + g + ": " + l.join(", ") : null;
+    }).filter(Boolean);
+    m += "\n" + GUN_AD[(d.getDay()+6)%7] + " · " + fmtTarih(gi) + "\n" + (satirlar.length ? satirlar.join("\n") : "  Kapanış personeli yok");
+  });
+  return m;
 }
 function kapanisHaftaGunleri(a){
   const out = []; for (let i=0;i<7;i++) out.push(new Date(a.s.getTime() + i*86400000)); return out;
@@ -1786,6 +1806,8 @@ function kapanisRender(){
   });
   haftaEl.innerHTML = h;
 }
+document.addEventListener("input", e=>{ if (e.target && e.target.id==="toptanAra") toptanRender(); });
+document.addEventListener("click", e=>{ if (e.target.closest("[data-kapwa]")) waGonder(kapanisHaftaMetni()); });
 document.addEventListener("change", e=>{ if (e.target && (e.target.id==="kapanisHaftaSec" || e.target.id==="kapanisGunSec")) kapanisRender(); });
 document.addEventListener("click", e=>{ /* kalabalık kaldırıldı */ });
 
@@ -2137,7 +2159,7 @@ function depoAksamMetni(){
 }
 function bakimUyariMetni(){
   const bk = db.bakim.map(b=>({...b, d:bakimDurum(b)})).filter(b=>b.d.gun <= 30).sort((a,b)=>a.d.gun-b.d.gun);
-  return "⚠️ Bakım uyarısı · " + bugunStr() + "\n" + bk.map(b=>`- ${b.ad} · ${b.d.etiket}`).join("\n") + "\n\nLütfen bakımların planlamasını yapın.";
+  return "⚠️ Bakım uyarısı · " + bugunStr() + "\n" + bk.map(b=>`- ${b.ad} · ${b.d.etiket}`).join("\n") + "\n\nArkadaşlar, bakımı yaklaşan ve bakımı geçen cihazlar bunlardır. Herhangi bir sorun olduğunda ya da bir sorun olduğunu düşündüğünüzde haber verin.";
 }
 function girisYokMetni(){
   const gi = vardiyaGun(); const s = girisDurum(gi);
@@ -2497,12 +2519,7 @@ function vardiyaRender(){
   const ist = taksiIstatistik(aySec);
   document.getElementById("taksiIstOzet").textContent = "Gün gün taksi istatistiği · " + ist.kullanildi + " gün kullanıldı, " + ist.kullanilmadi + " gün kullanılmadı";
   document.getElementById("taksiIstList").innerHTML = ist.html;
-  const liste = sirala(aylikTablo(aySec));
-  const th = (k,etiket)=>`<th data-sort="${k}">${etiket}${vSort.key===k ? (vSort.dir>0 ? " ▲" : " ▼") : ""}</th>`;
-  tbl.innerHTML = "<tr>" + th("ad","Personel") + th("gec","Geç kalma") + th("yok","Giriş yok") + th("izin","İzin (gün)") + th("saat","Çalışılan (sa)") + th("eksik","Eksik (sa)") + th("tk","Taksi kullandı (gün)") + th("tky","Taksi kullanmadı (gün)") + "</tr>"
-    + (liste.length
-      ? liste.map(k=>`<tr><td class="l"><b>${esc(k.ad)}</b></td><td>${k.gec} (${k.dk} dk)</td><td>${k.yok}</td><td>${k.izin}</td><td>${k.saat.toFixed(1)}</td><td>${k.eksik.toFixed(1)}</td><td>${k.tk}</td><td>${k.tky}</td></tr>`).join("")
-      : "<tr><td>Kayıt yok.</td></tr>");
+  ozetTabloRender();
 }
 document.addEventListener("click", e=>{
   const ayB = e.target.closest("[data-ay]");
@@ -2670,6 +2687,7 @@ function zoomOku(){ try { const v = Number(localStorage.getItem("kkb-zoom")); re
 function zoomUygula(z){
   z = Math.max(10, Math.min(200, Math.round(z)));
   document.documentElement.style.zoom = String(z/100);
+  document.documentElement.classList.toggle("zoomKucuk", z < 100);
   const f = document.getElementById("zoomFab");
   if (f){
     f.style.zoom = String(100/z);
@@ -2787,6 +2805,46 @@ function birikimAc(){
   bkCiz();
 }
 document.getElementById("birikimAcBtn").onclick = ()=>{ document.getElementById("menu").classList.add("hidden"); birikimAc(); };
+
+// ---- Yazı Tura ----
+function yaziTuraAc(){
+  let ov = document.getElementById("yaziTuraOv");
+  if (!ov){
+    ov = document.createElement("div"); ov.id = "yaziTuraOv"; ov.className = "modal"; document.body.appendChild(ov);
+    ov.innerHTML = '<div class="card" style="width:min(92vw,340px);text-align:center"><h2 style="margin:0 0 8px">Yazı Tura</h2>' +
+      '<div style="perspective:700px;height:220px;display:flex;align-items:center;justify-content:center">' +
+      '<div id="madeniPara" style="width:150px;height:150px;position:relative;transform-style:preserve-3d">' +
+      '<div style="position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;font:700 30px system-ui;color:#5b4a1a;background:radial-gradient(circle at 35% 30%,#fff6c8,#d4af37 55%,#8a6d16);box-shadow:inset 0 0 0 6px rgba(255,255,255,.35)">5 TL</div>' +
+      '<div style="position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;transform:rotateX(180deg);display:flex;align-items:center;justify-content:center;font:700 18px system-ui;color:#5b4a1a;background:radial-gradient(circle at 35% 30%,#fff6c8,#d4af37 55%,#8a6d16);box-shadow:inset 0 0 0 6px rgba(255,255,255,.35)">ATATÜRK</div>' +
+      '</div></div>' +
+      '<div id="paraSonuc" style="font-size:26px;font-weight:700;min-height:36px;margin:8px 0"></div>' +
+      '<div class="toolbar" style="justify-content:center"><button id="paraAtBtn">Parayı at</button><button class="ghost" id="paraKapatBtn">Kapat</button></div></div>';
+    ov.addEventListener("click", e=>{ if (e.target === ov) ov.classList.add("hidden"); });
+    document.getElementById("paraKapatBtn").onclick = ()=>ov.classList.add("hidden");
+    document.getElementById("paraAtBtn").onclick = ()=>{
+      const el = document.getElementById("madeniPara"), sonuc = document.getElementById("paraSonuc");
+      if (el.dataset.donuyor === "1") return;
+      el.dataset.donuyor = "1"; sonuc.textContent = "";
+      const base = Number(el.dataset.aci || 0);
+      const tura = Math.random() < 0.5;
+      const hedefMod = tura ? 180 : 0;
+      const hedef = base + 2160 + ((hedefMod - base) % 360 + 360) % 360;
+      const anim = el.animate([
+        {transform:"translateY(0px) rotateX("+base+"deg)"},
+        {transform:"translateY(-120px) rotateX("+(base + (hedef-base)*0.5)+"deg)", offset:0.5},
+        {transform:"translateY(0px) rotateX("+hedef+"deg)"}
+      ], {duration:1800, easing:"ease-out"});
+      anim.onfinish = ()=>{
+        el.style.transform = "rotateX("+hedef+"deg)";
+        el.dataset.aci = String(hedef);
+        el.dataset.donuyor = "";
+        sonuc.textContent = tura ? "TURA" : "YAZI";
+      };
+    };
+  }
+  ov.classList.remove("hidden");
+}
+document.getElementById("yaziTuraAcBtn").onclick = ()=>{ document.getElementById("menu").classList.add("hidden"); yaziTuraAc(); };
 
 function carkAc(){
   const k = aktifHaftaKey();
@@ -2962,13 +3020,19 @@ function depoRender(){
   let h = '<div class="grp">Giriş</div>' + (giris.length ? giris.map(satir).join("") : '<div class="muted">Yok</div>');
   h += '<div class="grp">Çıkış</div>' + (cikis.length ? cikis.map(satir).join("") : '<div class="muted">Yok</div>');
   let uyari = "";
-  if (nm >= 17*60 && (!giris.length || !cikis.length)){
-    const eksik = [!giris.length ? "girişi" : "", !cikis.length ? "çıkışı" : ""].filter(Boolean).join(" ve ");
+  const girisEksik = !giris.length && gelenDurumlari().length > 0;
+  const cikisEksik = !cikis.length;
+  if (nm >= 17*60 && (girisEksik || cikisEksik)){
+    const eksik = [girisEksik ? "girişi" : "", cikisEksik ? "çıkışı" : ""].filter(Boolean).join(" ve ");
     uyari += `<div class="durum no"><span class="ikon">✗</span><div><b>Bugün depo ${eksik} yok</b></div></div>` + uyariBtn("depoSabah", "Sabahçılara WhatsApp'tan hatırlat");
     if (depoBildirildi !== bug){ depoBildirildi = bug; bildir("Depo", "Bugün depo giriş/çıkış kaydı eksik"); }
   }
   const dunR = rows.filter(r=>r.tarih===dun);
-  const dunEksik = !dunR.some(r=>r.tur==="GİRİŞ") || !dunR.some(r=>r.tur==="ÇIKIŞ");
+  // Dün: çıkış yoksa uyar; giriş yoksa sadece dün toptancı sevkiyatı varsa uyar
+  const dunIdx = (bugunIdx + 6) % 7;
+  const dunKisa = GUN_KISA[dunIdx].toLocaleLowerCase("tr");
+  const dunSevkiyat = db.toptanci.some(t=>(t.gunler||"").toLocaleLowerCase("tr").split(/[,\s]+/).includes(dunKisa)) || db.siparis.some(x=>x.gelis===dun);
+  const dunEksik = !dunR.some(r=>r.tur==="ÇIKIŞ") || (dunSevkiyat && !dunR.some(r=>r.tur==="GİRİŞ"));
   if (nm >= 15 && nm < 6*60 && dunEksik){
     uyari += `<div class="durum no"><span class="ikon">✗</span><div><b>Dün depo kaydı eksik</b></div></div>` + uyariBtn("depoAksam", "Akşamcılara WhatsApp'tan hatırlat");
   }
@@ -2987,7 +3051,6 @@ function depoTabloRender(){
     : "<tr><td>Bu ay kayıt yok.</td></tr>";
 }
 document.getElementById("depoAy").addEventListener("change", depoTabloRender);
-document.getElementById("ozetAy").addEventListener("change", ozetTabloRender);
 document.getElementById("depoCek").onclick = ()=>otomatikCek(false);
 document.getElementById("depoYukle").onclick = ()=>{
   const t = document.getElementById("depoYapistir").value;

@@ -2848,7 +2848,7 @@ function yaziTuraAc(){
 document.getElementById("yaziTuraAcBtn").onclick = ()=>{ document.getElementById("menu").classList.add("hidden"); yaziTuraAc(); };
 
 // ---- Arka plan bildirimleri (Web Push) ----
-const BILDIRIM_WORKER = "https://kkb-bildirim.KULLANICI.workers.dev"; // Worker adresiniz (sw.js ile aynı olmalı)
+const BILDIRIM_WORKER = "https://kkb-bildirim.kentkafe.workers.dev"; // Worker adresiniz (sw.js ile aynı olmalı)
 function pushB64uToU8(str){ return Uint8Array.from(atob(str.replace(/-/g,"+").replace(/_/g,"/")), c=>c.charCodeAt(0)); }
 async function pushIdOf(endpoint){
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint));

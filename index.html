@@ -552,6 +552,7 @@
     <div class="toolbar" style="justify-content:space-between"><b style="color:var(--g)">Bağlantılar</b><button class="ghost" id="menuKapat">Kapat</button></div>
     <div id="menuListe"></div>
     <div class="menuSatir" style="margin-top:12px"><b>Sıralı Birikim</b><div><button id="birikimAcBtn">Birikimi aç</button></div></div>
+    <div class="menuSatir" style="margin-top:12px"><b>Arka plan bildirimleri</b><div><button id="pushAcBtn">Bildirimleri aç</button></div></div>
     <div class="menuSatir" style="margin-top:12px"><b>Yazı Tura</b><div><button id="yaziTuraAcBtn">Parayı at</button></div></div>
     <div class="menuSatir" style="margin-top:12px"><b>Çark</b><div><button id="carkAc">Çarka git</button></div></div>
   </div>
@@ -2845,6 +2846,76 @@ function yaziTuraAc(){
   ov.classList.remove("hidden");
 }
 document.getElementById("yaziTuraAcBtn").onclick = ()=>{ document.getElementById("menu").classList.add("hidden"); yaziTuraAc(); };
+
+// ---- Arka plan bildirimleri (Web Push) ----
+const BILDIRIM_WORKER = "https://kkb-bildirim.KULLANICI.workers.dev"; // Worker adresiniz (sw.js ile aynı olmalı)
+function pushB64uToU8(str){ return Uint8Array.from(atob(str.replace(/-/g,"+").replace(/_/g,"/")), c=>c.charCodeAt(0)); }
+async function pushIdOf(endpoint){
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint));
+  return btoa(String.fromCharCode(...new Uint8Array(d))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"").slice(0,32);
+}
+function pushItemleri(){
+  const now = Date.now(), sonuc = [], bug = iso(new Date());
+  const ekle = (t, b, m)=>{ if (t > now && t < now + 7*86400000) sonuc.push({t, b, m}); };
+  const girisRows = db.giris.rows || [];
+  programGunleri().filter(g=>!g.izin && g.s).forEach(g=>{
+    const base = new Date(g.tarih+"T00:00:00").getTime();
+    if (base > now + 2*86400000 || base < now - 86400000) return;
+    const bas = base + g.s.b*60000, bit = base + g.s.e*60000;
+    const kayit = girisRows.filter(r=>sameName(g.ad, r.ad));
+    const giriste = kayit.some(r=>/BAŞLI|BASLI/.test(up(r.islem)) && r.t >= bas-180*60000 && r.t <= bit);
+    const cikista = kayit.some(r=>/ÇIKI|CIKI/.test(up(r.islem)) && r.t >= bas && r.t <= bit+180*60000);
+    if (!giriste) ekle(bas+15*60000, "Giriş yapılmadı", g.ad + " · " + fmtTarih(g.tarih) + " giriş kaydı yok");
+    if (!cikista) ekle(bit+30*60000, "Çıkış yapılmadı", g.ad + " · " + fmtTarih(g.tarih) + " çıkış kaydı yok");
+  });
+  (db.notlar || []).filter(n=>n.durum!=="yapildi" && n.tarih).forEach(n=>ekle(dueOf(n).getTime(), "Anımsatıcı", n.metin));
+  (db.bakim || []).forEach(b=>{
+    const d = bakimDurum(b);
+    if (d.gun <= 7){
+      ekle(new Date(bug+"T09:00:00").getTime(), "Bakım", b.ad + " · " + d.etiket);
+      const yarin = iso(new Date(new Date(bug+"T00:00:00").getTime() + 86400000));
+      ekle(new Date(yarin+"T09:00:00").getTime(), "Bakım", b.ad + " · " + d.etiket);
+    }
+  });
+  const bugunDepo = ((db.depo && db.depo.rows) || []).filter(r=>r.tarih===bug);
+  if (!bugunDepo.some(r=>r.tur==="GİRİŞ") && gelenDurumlari().length > 0) ekle(new Date(bug+"T17:00:00").getTime(), "Depo", "Bugün depo giriş kaydı yok");
+  return sonuc.sort((a,b)=>a.t-b.t).slice(0, 200);
+}
+async function pushSync(){
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (!sub) return;
+    await fetch(BILDIRIM_WORKER + "/sync", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id: await pushIdOf(sub.endpoint), items: pushItemleri()})});
+  } catch(e){}
+}
+async function pushAc(){
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return toast("Bu tarayıcı bildirimi desteklemiyor");
+  const izin = await Notification.requestPermission();
+  if (izin !== "granted") return toast("Bildirim izni verilmedi. Telefon ayarlarından izin verin.");
+  try {
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    const {pub} = await (await fetch(BILDIRIM_WORKER + "/vapid")).json();
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: pushB64uToU8(pub)});
+    await fetch(BILDIRIM_WORKER + "/subscribe", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({sub: sub.toJSON()})});
+    toast("Arka plan bildirimleri açıldı");
+    pushSync();
+  } catch(e){ toast("Bildirim kurulamadı: " + e.message); }
+}
+const kaydetAsil = kaydet;
+let pushZamanlayici = null;
+kaydet = function(){
+  const r = kaydetAsil.apply(this, arguments);
+  clearTimeout(pushZamanlayici);
+  pushZamanlayici = setTimeout(pushSync, 4000);
+  return r;
+};
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+setTimeout(pushSync, 10000);
+document.getElementById("pushAcBtn").onclick = ()=>{ document.getElementById("menu").classList.add("hidden"); pushAc(); };
 
 function carkAc(){
   const k = aktifHaftaKey();

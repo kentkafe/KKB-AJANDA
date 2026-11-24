@@ -1,5 +1,5 @@
 // KKB AJANDA - arka plan bildirimleri (service worker)
-const WORKER = "https://kkb-bildirim.KULLANICI.workers.dev"; // Worker adresiniz
+const WORKER = "https://kkb-bildirim.kentkafe.workers.dev"; // Worker adresiniz
 const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 async function idOf(endpoint){
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint));
